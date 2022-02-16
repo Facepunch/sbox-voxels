@@ -22,7 +22,7 @@ namespace Facepunch.Voxels
 					compressArray = memoryStream.ToArray();
 				}
 			}
-			catch ( Exception _ )
+			catch ( Exception )
 			{
 
 			}
@@ -49,7 +49,7 @@ namespace Facepunch.Voxels
 					decompressedArray = decompressedStream.ToArray();
 				}
 			}
-			catch ( Exception _ )
+			catch ( Exception )
 			{
 
 			}

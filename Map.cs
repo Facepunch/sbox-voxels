@@ -45,6 +45,9 @@ namespace Facepunch.Voxels
 				{
 					var seaLevel = reader.ReadInt32();
 					var seed = reader.ReadInt32();
+					var maxSizeX = reader.ReadInt32();
+					var maxSizeY = reader.ReadInt32();
+					var maxSizeZ = reader.ReadInt32();
 					var chunkSizeX = reader.ReadInt32();
 					var chunkSizeY = reader.ReadInt32();
 					var chunkSizeZ = reader.ReadInt32();
@@ -58,6 +61,7 @@ namespace Facepunch.Voxels
 					Current = new Map( seed )
 					{
 						SeaLevel = seaLevel,
+						MaxSize = new IntVector3( maxSizeX, maxSizeY, maxSizeZ ),
 						ChunkSize = new IntVector3( chunkSizeX, chunkSizeY, chunkSizeZ ),
 						VoxelSize = voxelSize,
 						ChunkRenderDistance = chunkRenderDistance,
@@ -414,6 +418,9 @@ namespace Facepunch.Voxels
 				{
 					writer.Write( SeaLevel );
 					writer.Write( Seed );
+					writer.Write( MaxSize.x );
+					writer.Write( MaxSize.y );
+					writer.Write( MaxSize.z );
 					writer.Write( ChunkSize.x );
 					writer.Write( ChunkSize.y );
 					writer.Write( ChunkSize.z );
