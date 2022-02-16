@@ -1,0 +1,292 @@
+//=========================================================================================================================
+// Optional
+//=========================================================================================================================
+HEADER
+{
+	DevShader = true;
+	CompileTargets = ( IS_SM_50 && ( PC || VULKAN ) );
+	Description = "Voxel";
+	DebugInfo = false;
+}
+
+//=========================================================================================================================
+// Optional
+//=========================================================================================================================
+FEATURES
+{
+	#include "common/features.hlsl"
+	Feature( F_ADDITIVE_BLEND, 0..1 );
+}
+
+//=========================================================================================================================
+// Optional
+//=========================================================================================================================
+MODES
+{
+	VrForward();
+	Depth( S_MODE_DEPTH );
+	ToolsVis( S_MODE_TOOLS_VIS );
+	ToolsWireframe( S_MODE_TOOLS_WIREFRAME );
+	ToolsShadingComplexity( "vr_tools_shading_complexity.vfx" );
+}
+
+//=========================================================================================================================
+COMMON
+{
+	#include "system.fxc" // This should always be the first include in COMMON
+	#include "sbox_shared.fxc"
+	#define VS_INPUT_HAS_TANGENT_BASIS 1
+	#define PS_INPUT_HAS_TANGENT_BASIS 1
+
+	float g_flVoxelSize < Default( 32.0 ); >;
+}
+
+//=========================================================================================================================
+
+struct VertexInput
+{
+	#include "common/vertexinput.hlsl"
+
+	uint2 vData : TEXCOORD10 < Semantic( None ); >;
+};
+
+//=========================================================================================================================
+
+struct PixelInput
+{
+	#include "common/pixelinput.hlsl"
+	float2 vTexCoord : TEXCOORD9;
+	uint nTextureIndex : TEXCOORD10;
+	int3 vPositionOs : TEXCOORD11;
+};
+
+//=========================================================================================================================
+
+VS
+{
+	#include "common/vertex.hlsl"
+	
+
+	PixelInput MainVs( INSTANCED_SHADER_PARAMS( VertexInput i ) )
+	{
+		int3 chunkPosition = int3( i.vData.y & 63, (i.vData.y >> 6) & 63, (i.vData.y >> 12) & 63 );
+
+		float3 position = float3( float( i.vData.x & ( 63 ) ), float( ( i.vData.x >> 6 ) & ( 63 ) ), float( ( i.vData.x >> 12 ) & ( 63 ) ) );
+		int texindex = int( ( i.vData.x >> 18 ) & ( 31 ) );
+		int normal = int( ( i.vData.x >> 27 ) & ( 7 ) );
+
+		i.vPositionOs = position * g_flVoxelSize;
+
+		float3 vNormalOs = float3( 0, 0, 1.0f );
+		if ( normal == 1 ) vNormalOs = float3( 0, 0, -1 );
+		else if ( normal == 2 ) vNormalOs = float3( 0, -1, 0 );
+		else if ( normal == 3 ) vNormalOs = float3( 0, 1, 0 );
+		else if ( normal == 4 ) vNormalOs = float3( -1, 0, 0 );
+		else if ( normal == 5 ) vNormalOs = float3( 1, 0, 0 );
+
+		float3 vTangentOs = float3( 1, 0, 0 );
+		if ( normal == 1 ) vTangentOs = float3( 1, 0, 0 );
+		else if ( normal == 2 ) vTangentOs = float3( 0, 0, -1 );
+		else if ( normal == 3 ) vTangentOs = float3( 0, 0, -1 );
+		else if ( normal == 4 ) vTangentOs = float3( 0, 0, -1 );
+		else if ( normal == 5 ) vTangentOs = float3( 0, 0, -1 );
+
+		float3 vBinormalOs = cross( vNormalOs, vTangentOs );
+		float2 vTexCoord = float2( dot( vBinormalOs, i.vPositionOs ), dot( vTangentOs, i.vPositionOs ) );
+		PixelInput o = ProcessVertex( i );
+		o.vNormalWs = vNormalOs;
+		o.vTangentUWs = vBinormalOs;
+		o.vTangentVWs = vTangentOs;
+		o.vTexCoord = vTexCoord.xy;
+		o.nTextureIndex = texindex;
+
+		// Fudge the number up a little so we're not checking the current(in ground) blocks
+		o.vPositionOs = chunkPosition + vNormalOs;
+		return FinalizeVertex( o );
+	}
+}
+
+//=========================================================================================================================
+
+PS
+{
+	float flTextureAtlasCellSize< Default(64.0f); >;
+	StaticCombo( S_MODE_DEPTH, 0..1, Sys( ALL ) );
+	StaticCombo( S_MODE_TOOLS_WIREFRAME, 0..1, Sys( ALL ) );
+
+	#if ( S_MODE_TOOLS_WIREFRAME )
+		RenderState( FillMode, WIREFRAME );
+		RenderState( SlopeScaleDepthBias, -0.5 );
+		RenderState( DepthBiasClamp, -0.0005 );
+		RenderState( DepthWriteEnable, false );
+		#define DEPTH_STATE_ALREADY_SET
+	#endif
+
+	#include "common/pixel.hlsl"
+
+	CreateInputTexture2D( TextureAtlasColor, Srgb, 8, "", "_color", "Voxel Atlas,10/10", Default4( 1.0f, 1.0f, 1.0f, 1.0f ) );
+
+	SamplerState g_sPointSampler < Filter( POINT ); AddressU( MIRROR ); AddressV( MIRROR ); >;
+
+	CreateTexture2DWithoutSampler( g_tAtlasColor )  < Channel( RGBA,  None( TextureAtlasColor ), Srgb ); OutputFormat( BC7 ); SrgbRead( true ); Filter( POINT ); AddressU( MIRROR ); AddressV( MIRROR ); >;
+
+	CreateInputTexture2D( TextureAtlasNormal,           Linear, 8, "NormalizeNormals", "_normal", 		"Voxel Atlas,10/20", Default3( 0.5, 0.5, 1.0 ) );
+	CreateInputTexture2D( TextureAtlasRoughness,        Linear, 8, "",                 "_rough",  		"Voxel Atlas,10/30", Default( 0.5 ) );
+	CreateInputTexture2D( TextureAtlasMetalness,        Linear, 8, "",                 "_metal",  		"Voxel Atlas,10/40", Default( 1.0 ) );
+	CreateInputTexture2D( TextureAtlasAmbientOcclusion, Linear, 8, "",                 "_ao",     		"Voxel Atlas,10/50", Default( 1.0 ) );
+	CreateInputTexture2D( TextureAtlasEmission, 		Linear, 8, "",                 "_emission",     "Voxel Atlas,10/60", Default3( 0.0, 0.0, 0.0 ) );
+
+	CreateTexture2DWithoutSampler( g_tAtlasNormal )   < Channel( RGBA, None( TextureAtlasNormal ), Linear ); OutputFormat( BC7 ); SrgbRead( false ); >;
+	CreateTexture2DWithoutSampler( g_tAtlasRma )      < Channel( R,    None( TextureAtlasRoughness ), Linear ); Channel( G, None( TextureAtlasMetalness ), Linear ); Channel( B, None( TextureAtlasAmbientOcclusion ), Linear ); OutputFormat( BC7 ); SrgbRead( false ); >;
+	CreateTexture2DWithoutSampler( g_tAtlasEmission ) < Channel( RGB, None( TextureAtlasEmission ), Linear ); OutputFormat( BC7 ); SrgbRead( false ); >;
+	
+	CreateInputTexture3D( TextureLightmap, Linear, 32, "", "_lightmap", "Voxel Atlas,10/70", Default3( 1.0, 1.0, 1.0 ) );
+	
+	// Move all this to C#
+	CreateInputTexture3D( TextureLightmapWest, Linear, 32, "", "_lightmap", "Voxel Atlas,10/80", Default3( 1.0, 1.0, 1.0 ) );
+	CreateInputTexture3D( TextureLightmapSouth, Linear, 32, "", "_lightmap", "Voxel Atlas,10/90", Default3( 1.0, 1.0, 1.0 ) );
+	CreateInputTexture3D( TextureLightmapEast, Linear, 32, "", "_lightmap", "Voxel Atlas,10/100", Default3( 1.0, 1.0, 1.0 ) );
+	CreateInputTexture3D( TextureLightmapNorth, Linear, 32, "", "_lightmap", "Voxel Atlas,10/110", Default3( 1.0, 1.0, 1.0 ) );
+	CreateInputTexture3D( TextureLightmapTop, Linear, 32, "", "_lightmap", "Voxel Atlas,10/120", Default3( 1.0, 1.0, 1.0 ) );
+	CreateInputTexture3D( TextureLightmapBottom, Linear, 32, "", "_lightmap", "Voxel Atlas,10/130", Default3( 1.0, 1.0, 1.0 ) );
+
+	CreateTexture3DWithoutSampler( g_tLightmap ) < Channel( R, None( TextureLightmap ), Linear ); SrgbRead( false ); Filter( POINT ); OutputFormat( R32F ); AddressU( CLAMP ); AddressV( CLAMP ); AddressW( CLAMP ); > ;
+	
+	// We can't do this because the inputs are dynamic :(
+	//CreateTexture3DWithoutSampler( g_tLightmapAdjacent ) < Channel( R, None( TextureLightmapWest ), Linear ); Channel( G, None( TextureLightmapSouth ), Linear ); Channel( B, None( TextureLightmapEast ), Linear ); Channel( A, None( TextureLightmapNorth ), Linear ); OutputFormat( RGBA8888 ); SrgbRead( false ); Filter( POINT ); AddressU( MIRROR ); AddressV( MIRROR ); AddressW( MIRROR ); > ;
+	CreateTexture3DWithoutSampler( g_tLightmapAdjacent0 ) < Channel( R, None( TextureLightmapWest ), Linear ); OutputFormat( R32F ); SrgbRead( false ); Filter( POINT ); AddressU( WRAP ); AddressV(WRAP ); AddressW( WRAP ); > ;
+	CreateTexture3DWithoutSampler( g_tLightmapAdjacent1 ) < Channel( R, None( TextureLightmapSouth ), Linear ); OutputFormat( R32F ); SrgbRead( false ); Filter( POINT ); AddressU( WRAP ); AddressV(WRAP ); AddressW( WRAP ); > ;
+	CreateTexture3DWithoutSampler( g_tLightmapAdjacent2 ) < Channel( R, None( TextureLightmapEast ), Linear ); OutputFormat( R32F ); SrgbRead( false ); Filter( POINT ); AddressU( WRAP ); AddressV(WRAP ); AddressW( WRAP ); > ;
+	CreateTexture3DWithoutSampler( g_tLightmapAdjacent3 ) < Channel( R, None( TextureLightmapNorth ), Linear ); OutputFormat( R32F ); SrgbRead( false ); Filter( POINT ); AddressU( WRAP ); AddressV(WRAP ); AddressW( WRAP ); > ;
+	CreateTexture3DWithoutSampler( g_tLightmapAdjacent4 ) < Channel( R, None( TextureLightmapTop ), Linear ); OutputFormat( R32F ); SrgbRead( false ); Filter( POINT ); AddressU( WRAP ); AddressV(WRAP ); AddressW( WRAP ); > ;
+	CreateTexture3DWithoutSampler( g_tLightmapAdjacent5 ) < Channel( R, None( TextureLightmapBottom ), Linear ); OutputFormat( R32F ); SrgbRead( false ); Filter( POINT ); AddressU( WRAP ); AddressV(WRAP ); AddressW( WRAP ); > ;
+
+	struct LightmapData
+	{
+		float3 Torch;
+		float Sunlight;
+	};
+
+	LightmapData UnpackLightmap(Texture3D lightmapTexture, int3 texOffset )
+	{
+		float texDataFl = Tex3DLoad(lightmapTexture, int4( texOffset, 0 ) ).r;
+		uint texData = asuint(texDataFl) & 0xbfffffff; // Skip bit we're using for denormalization
+
+		LightmapData o;
+		o.Torch = float3(
+			float(texData.r & 15) / 16.0f,
+			float((texData.r >> 4) & 15) / 16.0f,
+			float((texData.r >> 8) & 15) / 16.0f
+		);
+		o.Sunlight = float((texData.r >> 12) & 15) / 16.0f;
+		o.Sunlight *= o.Sunlight;
+
+		return o;
+	}
+
+	LightmapData FetchBestLightmap( int3 vPositionOs )
+	{
+		int3 vLightmapDim = TextureDimensions3D( g_tLightmap, 0 );
+		if( vPositionOs.x < 0 )
+		{
+			// x - 1
+			return UnpackLightmap( g_tLightmapAdjacent0, int3(vLightmapDim.x - 1, vPositionOs.yz) );
+		}
+		else if( vPositionOs.y < 0 )
+		{
+			// y - 1
+			return UnpackLightmap( g_tLightmapAdjacent1, int3(vPositionOs.x, vLightmapDim.y - 1, vPositionOs.z) );
+		}
+		else if( vPositionOs.z < 0 )
+		{
+			return UnpackLightmap( g_tLightmapAdjacent5, int3(vPositionOs.xy, vLightmapDim.z - 1) );
+		}
+		else if( vPositionOs.x >= vLightmapDim.x )
+		{
+			return UnpackLightmap( g_tLightmapAdjacent2, int3(0, vPositionOs.yz) );
+		}
+		else if( vPositionOs.y >= vLightmapDim.y )
+		{
+			return UnpackLightmap( g_tLightmapAdjacent3, int3(vPositionOs.x, 0, vPositionOs.z) );
+		}
+		else if( vPositionOs.z >= vLightmapDim.z )
+		{
+			return UnpackLightmap( g_tLightmapAdjacent4, int3(vPositionOs.xy, 0) );
+		}
+		else
+		{
+			return UnpackLightmap( g_tLightmap, vPositionOs.xyz );
+		}
+	}
+
+	float TapLightmap( int3 vPositionOs )
+	{
+		LightmapData data = FetchBestLightmap(vPositionOs);
+		float LightLevel = max(data.Torch.z, max(data.Torch.x, data.Torch.y)) + data.Sunlight;
+		return min(1.0f, LightLevel);
+	}
+
+	PixelOutput MainPs( PixelInput i )
+	{
+		float2 vAtlasDims = TextureDimensions2D( g_tAtlasColor, 0 ).xy;
+		
+		float2 vAltasMaxCells = vAtlasDims / flTextureAtlasCellSize;
+		float2 vInvMaxCells = 1.0f / vAltasMaxCells;
+
+		float2 vCellLocation =  float2( i.nTextureIndex % vAltasMaxCells.x, floor( i.nTextureIndex / vAltasMaxCells.x ) );
+
+		// Normalized to Atlas Space
+		float2 vTexCoordAtlas = frac((i.vTexCoord.xy % g_flVoxelSize) / g_flVoxelSize);
+		vTexCoordAtlas = frac((vTexCoordAtlas / vAltasMaxCells) + (vCellLocation * vInvMaxCells));
+
+		#if ( S_MODE_DEPTH )
+		{
+			PixelOutput o;
+			float4 vColor = Tex2DLevelS( g_tAtlasColor, g_sPointSampler, vTexCoordAtlas, 0 );
+			if(vColor.a < 0.5f) discard;
+			o.vColor.rgba = float4( 0.0, 0.0, 0.0, 1.0f );
+			return o;
+		}
+		#elif ( S_MODE_TOOLS_WIREFRAME )
+		{
+			PixelOutput o;
+			o.vColor.rgba = float4( g_vWireframeColor.rgb, 1.0f );
+			return o;
+		}
+		#else
+		{
+			LightmapData LightData = FetchBestLightmap( i.vPositionOs );
+			float3 Torch = LightData.Torch;
+			float Sunlight = LightData.Sunlight;
+
+			// Torch flickering
+			float3 torchColor = Torch * (1.0f - (((sin(g_flTime * 8.0f) + 1.0f) * 0.5f) * 0.2f));
+
+			float4 vColor = Tex2DLevelS( g_tAtlasColor, g_sPointSampler, vTexCoordAtlas, 0 );
+
+			if( vColor.a < 0.50f ) {
+				discard;
+			}
+
+			float3 vRma = Tex2DLevelS( g_tAtlasRma, g_sPointSampler, vTexCoordAtlas, 0 ).rgb;
+			float3 vEmission = Tex2DLevelS( g_tAtlasEmission, g_sPointSampler, vTexCoordAtlas, 0 ).rgb;
+			
+			Material m;
+			m.Albedo.rgb = vColor.rgb * saturate(0.007f + torchColor + Sunlight * 0.8f);
+			m.Normal = Tex2DLevelS( g_tAtlasNormal, g_sPointSampler, vTexCoordAtlas, 0 ).rgb;
+			m.Roughness = vRma.r;
+			m.Metalness = vRma.g;
+			m.AmbientOcclusion = vRma.b;
+			m.BlendMask = 1.0f;
+			m.TintMask = 1.0f;
+			m.Opacity = 1.0f;
+			m.TransmissiveMask = 1.0f;
+			m.Emission.rgb = vEmission;
+			
+			return FinalizePixelMaterial( i, m );
+			
+
+		}
+		#endif
+	}
+}
