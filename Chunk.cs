@@ -104,7 +104,7 @@ namespace Facepunch.Voxels
 
 			if ( IsClient )
 			{
-				var material = Material.Load( "materials/corewars/voxel.vmat" );
+				var material = Material.Load( Map.VoxelMaterial );
 				TranslucentMesh = new Mesh( material );
 				OpaqueMesh = new Mesh( material );
 

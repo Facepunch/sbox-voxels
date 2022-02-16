@@ -53,6 +53,7 @@ namespace Facepunch.Voxels
 					var chunkUnloadDistance = reader.ReadInt32();
 					var minimumLoadedChunks = reader.ReadInt32();
 					var buildCollisionInThread = reader.ReadBoolean();
+					var voxelMaterial = reader.ReadString();
 
 					Current = new Map( seed )
 					{
@@ -62,7 +63,8 @@ namespace Facepunch.Voxels
 						ChunkRenderDistance = chunkRenderDistance,
 						ChunkUnloadDistance = chunkUnloadDistance,
 						MinimumLoadedChunks = minimumLoadedChunks,
-						BuildCollisionInThread = buildCollisionInThread
+						BuildCollisionInThread = buildCollisionInThread,
+						VoxelMaterial = voxelMaterial
 					};
 
 					Current.LoadBlockAtlas( reader.ReadString() );
@@ -213,6 +215,7 @@ namespace Facepunch.Voxels
 		public BlockAtlas BlockAtlas { get; private set; }
 		public IntVector3 MaxSize { get; private set; }
 		public bool BuildCollisionInThread { get; private set; }
+		public string VoxelMaterial { get; private set; }
 		public int MinimumLoadedChunks { get; private set; }
 		public int ChunkRenderDistance { get; private set; }
 		public int ChunkUnloadDistance { get; private set; }
@@ -419,6 +422,7 @@ namespace Facepunch.Voxels
 					writer.Write( ChunkUnloadDistance );
 					writer.Write( MinimumLoadedChunks );
 					writer.Write( BuildCollisionInThread );
+					writer.Write( VoxelMaterial );
 					writer.Write( BlockAtlasFileName );
 					writer.Write( BlockData.Count - 1 );
 
@@ -467,6 +471,11 @@ namespace Facepunch.Voxels
 		public void SetMinimumLoadedChunks( int minimum )
 		{
 			MinimumLoadedChunks = minimum;
+		}
+
+		public void SetVoxelMaterial( string materialName )
+		{
+			VoxelMaterial = materialName;
 		}
 
 		public void SetBuildCollisionInThread( bool value )
