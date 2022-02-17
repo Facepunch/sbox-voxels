@@ -592,8 +592,11 @@ namespace Facepunch.Voxels
 						var z = reader.ReadInt32();
 
 						var chunk = Current.GetOrCreateChunk( new IntVector3( x, y, z ) );
-						
-						chunk.Blocks = reader.ReadBytes( chunk.Blocks.Length );
+						chunk.HasOnlyAirBlocks = reader.ReadBoolean();
+
+						if ( !chunk.HasOnlyAirBlocks )
+							chunk.Blocks = reader.ReadBytes( chunk.Blocks.Length );
+
 						chunk.LightMap.Deserialize( reader );
 						chunk.DeserializeData( reader );
 
@@ -601,7 +604,7 @@ namespace Facepunch.Voxels
 
 						if ( i % 32 == 0 )
 						{
-							await GameTask.Delay( 1 );
+							await GameTask.Delay( 5 );
 						}
 					}
 				}

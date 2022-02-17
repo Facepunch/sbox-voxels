@@ -11,6 +11,8 @@ namespace Facepunch.Voxels
 		public Texture Texture { get; private set; }
 		public Chunk Chunk { get; private set; }
 		public Map Map { get; private set; }
+		public bool IsClient => Host.IsClient;
+		public bool IsServer => Host.IsServer;
 		public int ChunkSizeX;
 		public int ChunkSizeY;
 		public int ChunkSizeZ;
@@ -44,10 +46,23 @@ namespace Facepunch.Voxels
 			Map = map;
 
 			Data = new byte[ChunkSizeX * ChunkSizeY * ChunkSizeZ * 4];
-			Texture = Texture.CreateVolume( ChunkSizeX, ChunkSizeY, ChunkSizeZ )
-				.WithFormat( ImageFormat.R32F )
-				.WithData( Data )
-				.Finish();
+
+			if ( IsClient )
+			{
+				Texture = Texture.CreateVolume( ChunkSizeX, ChunkSizeY, ChunkSizeZ )
+					.WithFormat( ImageFormat.R32F )
+					.WithData( Data )
+					.Finish();
+			}
+		}
+
+		public void Destroy()
+		{
+			if ( IsClient )
+			{
+				Texture.Dispose();
+				Texture = null;
+			}
 		}
 
 		public void Serialize( BinaryWriter writer )

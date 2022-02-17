@@ -27,6 +27,7 @@ namespace Facepunch.Voxels
 		public bool IsFullUpdateActive { get; set; }
 		public ChunkGenerator Generator { get; set; }
 		public bool QueueRebuild { get; set; }
+		public bool HasOnlyAirBlocks { get; set; }
 		public bool IsModelCreated { get; private set; }
 		public bool HasGenerated { get; private set; }
 		public bool Initialized { get; private set; }
@@ -74,6 +75,7 @@ namespace Facepunch.Voxels
 
 		public Chunk( Map map, int x, int y, int z )
 		{
+			HasOnlyAirBlocks = true;
 			VoxelSize = map.VoxelSize;
 			SizeX = map.ChunkSize.x;
 			SizeY = map.ChunkSize.y;
@@ -142,6 +144,9 @@ namespace Facepunch.Voxels
 				entity.BlockType = block;
 				SetEntity( localPosition, entity );
 			}
+
+			if ( blockId != 0 && HasOnlyAirBlocks )
+				HasOnlyAirBlocks = false;
 		}
 
 		public bool IsEmpty( int lx, int ly, int lz )
@@ -602,12 +607,19 @@ namespace Facepunch.Voxels
 
 		public void SetBlock( IntVector3 position, byte blockId )
 		{
-			Blocks[GetLocalPositionIndex( position )] = blockId;
+			var index = GetLocalPositionIndex( position );
+			Blocks[index] = blockId;
+
+			if ( blockId != 0 && HasOnlyAirBlocks )
+				HasOnlyAirBlocks = false;
 		}
 
 		public void SetBlock( int index, byte blockId )
 		{
 			Blocks[index] = blockId;
+
+			if ( blockId != 0 && HasOnlyAirBlocks )
+				HasOnlyAirBlocks = false;
 		}
 
 		public void Destroy()
@@ -633,6 +645,8 @@ namespace Facepunch.Voxels
 				OpaqueSceneObject.Delete();
 				OpaqueSceneObject = null;
 			}
+
+			LightMap.Destroy();
 
 			foreach ( var kv in Entities )
 			{

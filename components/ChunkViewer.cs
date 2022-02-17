@@ -160,7 +160,10 @@ namespace Facepunch.Voxels
 							writer.Write( chunk.Offset.x );
 							writer.Write( chunk.Offset.y );
 							writer.Write( chunk.Offset.z );
-							writer.Write( chunk.Blocks );
+							writer.Write( chunk.HasOnlyAirBlocks );
+
+							if ( !chunk.HasOnlyAirBlocks )
+								writer.Write( chunk.Blocks );
 
 							chunk.LightMap.Serialize( writer );
 							chunk.SerializeData( writer );
