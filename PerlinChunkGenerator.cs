@@ -15,25 +15,25 @@ namespace Facepunch.Voxels
 		{
 			Heightmap = new int[Chunk.SizeX * Chunk.SizeY];
 
-			Noise1 = new FastNoiseLite( Map.Seed );
+			Noise1 = new FastNoiseLite( VoxelWorld.Seed );
 			Noise1.SetNoiseType( FastNoiseLite.NoiseType.OpenSimplex2 );
 			Noise1.SetFractalType( FastNoiseLite.FractalType.FBm );
 			Noise1.SetFractalOctaves( 4 );
 			Noise1.SetFrequency( 1 / 256.0f );
 
-			Noise2 = new FastNoiseLite( Map.Seed );
+			Noise2 = new FastNoiseLite( VoxelWorld.Seed );
 			Noise2.SetNoiseType( FastNoiseLite.NoiseType.OpenSimplex2 );
 			Noise2.SetFractalType( FastNoiseLite.FractalType.FBm );
 			Noise2.SetFractalOctaves( 4 );
 			Noise2.SetFrequency( 1 / 256.0f );
 
-			Noise3 = new FastNoiseLite( Map.Seed );
+			Noise3 = new FastNoiseLite( VoxelWorld.Seed );
 			Noise3.SetNoiseType( FastNoiseLite.NoiseType.OpenSimplex2 );
 			Noise3.SetFractalType( FastNoiseLite.FractalType.FBm );
 			Noise3.SetFractalOctaves( 4 );
 			Noise3.SetFrequency( 1 / 256.0f );
 
-			Noise4 = new FastNoiseLite( Map.Seed );
+			Noise4 = new FastNoiseLite( VoxelWorld.Seed );
 			Noise4.SetNoiseType( FastNoiseLite.NoiseType.OpenSimplex2 );
 			Noise4.SetFrequency( 1 / 1024.0f );
 
@@ -61,7 +61,7 @@ namespace Facepunch.Voxels
 		{
 			var offset = Chunk.Offset;
 
-			Rand.SetSeed( offset.x + offset.y + offset.z * Chunk.SizeZ + Map.Seed );
+			Rand.SetSeed( offset.x + offset.y + offset.z * Chunk.SizeZ + VoxelWorld.Seed );
 
 			var topChunk = Chunk.GetNeighbour( BlockFace.Top );
 
@@ -69,7 +69,7 @@ namespace Facepunch.Voxels
 			{
 				for ( var y = 0; y < Chunk.SizeY; y++ )
 				{
-					var biome = Map.GetBiomeAt( x + offset.x, y + offset.y );
+					var biome = VoxelWorld.GetBiomeAt( x + offset.x, y + offset.y );
 					var h = GetHeight( x, y );
 
 					for ( var z = 0; z < Chunk.SizeZ; z++ )
@@ -79,18 +79,18 @@ namespace Facepunch.Voxels
 
 						if ( z + offset.z > h )
 						{
-							if ( z + offset.z < Map.SeaLevel )
+							if ( z + offset.z < VoxelWorld.SeaLevel )
 								Chunk.CreateBlockAtPosition( position, biome.LiquidBlockId );
 							else if ( Chunk.Blocks[index] == 0 && z == Chunk.SizeZ - 1 )
 								Chunk.LightMap.AddSunLight( position, 15 );
 						}
 						else
 						{
-							var isGeneratingTopBlock = z + offset.z == h && z + offset.z > Map.SeaLevel - 1;
+							var isGeneratingTopBlock = z + offset.z == h && z + offset.z > VoxelWorld.SeaLevel - 1;
 
 							if ( isGeneratingTopBlock )
 								Chunk.CreateBlockAtPosition( position, biome.TopBlockId );
-							else if ( z + offset.z <= Map.SeaLevel - 1 && h < Map.SeaLevel && z + offset.z > h - 3 )
+							else if ( z + offset.z <= VoxelWorld.SeaLevel - 1 && h < VoxelWorld.SeaLevel && z + offset.z > h - 3 )
 								Chunk.CreateBlockAtPosition( position, biome.BeachBlockId );
 							else if ( z + offset.z > h - 3 )
 								Chunk.CreateBlockAtPosition( position, biome.GroundBlockId );
@@ -105,10 +105,10 @@ namespace Facepunch.Voxels
 								{
 									GenerateTree( biome, position.x, position.y, position.z );
 								}
-								else if ( Map.SuitableSpawnPositions.Count == 0 || Rand.Float() <= 0.1f )
+								else if ( VoxelWorld.SuitableSpawnPositions.Count == 0 || Rand.Float() <= 0.1f )
 								{
-									var spawnPositionSource = Map.ToSourcePositionCenter( offset + position + new IntVector3( 0, 0, 1 ) );
-									Map.SuitableSpawnPositions.Add( spawnPositionSource );
+									var spawnPositionSource = VoxelWorld.ToSourcePositionCenter( offset + position + new IntVector3( 0, 0, 1 ) );
+									VoxelWorld.SuitableSpawnPositions.Add( spawnPositionSource );
 								}
 							}
 						}
@@ -137,8 +137,8 @@ namespace Facepunch.Voxels
 			int ry = localPosition.y + offset.y;
 			int rz = localPosition.z + offset.z;
 
-			double n1 = Map.CaveNoise.GetNoise( rx, ry, rz );
-			double n2 = Map.CaveNoise.GetNoise( rx, ry + 88f, rz );
+			double n1 = VoxelWorld.CaveNoise.GetNoise( rx, ry, rz );
+			double n2 = VoxelWorld.CaveNoise.GetNoise( rx, ry + 88f, rz );
 			double finalNoise = n1 * n1 + n2 * n2;
 
 			if ( finalNoise < 0.02f )
@@ -206,7 +206,7 @@ namespace Facepunch.Voxels
 				{
 					var position = new IntVector3( leavesX, leavesY, trunkTop + leavesRadius + 1 );
 
-					if ( Map.IsEmpty( position ) )
+					if ( VoxelWorld.IsEmpty( position ) )
 					{
 						Chunk.CreateBlockAtPosition( position, biome.TreeLeafBlockId );
 					}

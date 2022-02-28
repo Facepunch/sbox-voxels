@@ -5,9 +5,9 @@ namespace Facepunch.Voxels
 {
 	public class AirBlock : BlockType
 	{
-		public AirBlock( Map map )
+		public AirBlock( VoxelWorld world )
 		{
-			Map = map;
+			VoxelWorld = world;
 		}
 
 		public override string FriendlyName => "Air";

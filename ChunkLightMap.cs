@@ -10,7 +10,7 @@ namespace Facepunch.Voxels
 	{
 		public Texture Texture { get; private set; }
 		public Chunk Chunk { get; private set; }
-		public Map Map { get; private set; }
+		public VoxelWorld VoxelWorld { get; private set; }
 		public bool IsClient => Host.IsClient;
 		public bool IsServer => Host.IsServer;
 		public int ChunkSizeX;
@@ -25,7 +25,7 @@ namespace Facepunch.Voxels
 
 		private bool IsDirty { get; set; }
 
-		public ChunkLightMap( Chunk chunk, Map map )
+		public ChunkLightMap( Chunk chunk, VoxelWorld world )
 		{
 			SunLightRemoveQueue = new();
 			SunLightAddQueue = new();
@@ -43,7 +43,7 @@ namespace Facepunch.Voxels
 			ChunkSizeY = chunk.SizeY;
 			ChunkSizeZ = chunk.SizeZ;
 			Chunk = chunk;
-			Map = map;
+			VoxelWorld = world;
 
 			Data = new byte[ChunkSizeX * ChunkSizeY * ChunkSizeZ * 4];
 
@@ -193,12 +193,12 @@ namespace Facepunch.Voxels
 
 				for ( var i = 0; i < 6; i++ )
 				{
-					var neighbourPosition = Map.GetAdjacentPosition( node.Position, i );
-					var lightLevel = Map.GetSunLight( neighbourPosition );
+					var neighbourPosition = VoxelWorld.GetAdjacentPosition( node.Position, i );
+					var lightLevel = VoxelWorld.GetSunLight( neighbourPosition );
 
 					if ( (lightLevel == 15 && neighbourPosition.z == node.Position.z - 1) || (lightLevel != 0 && lightLevel < node.Value) )
 					{
-						Map.SetSunLight( neighbourPosition, 0 );
+						VoxelWorld.SetSunLight( neighbourPosition, 0 );
 
 						SunLightRemoveQueue.Enqueue( new LightRemoveNode
 						{
@@ -218,29 +218,29 @@ namespace Facepunch.Voxels
 				if ( !SunLightAddQueue.TryDequeue( out var node ) )
 					continue;
 
-				var blockId = Map.GetBlock( node );
-				var block = Map.GetBlockType( blockId );
+				var blockId = VoxelWorld.GetBlock( node );
+				var block = VoxelWorld.GetBlockType( blockId );
 
 				if ( !block.IsTranslucent )
 					continue;
 
-				var lightLevel = Map.GetSunLight( node );
+				var lightLevel = VoxelWorld.GetSunLight( node );
 
 				for ( var i = 0; i < 6; i++ )
 				{
-					var neighbourPosition = Map.GetAdjacentPosition( node, i );
-					var neighbourLightLevel = Map.GetSunLight( neighbourPosition );
+					var neighbourPosition = VoxelWorld.GetAdjacentPosition( node, i );
+					var neighbourLightLevel = VoxelWorld.GetSunLight( neighbourPosition );
 
 					if ( neighbourLightLevel + 2 <= lightLevel || (lightLevel == 15 && neighbourLightLevel != 15 && neighbourPosition.z == node.z - 1) )
 					{
-						var neighbourBlockId = Map.GetBlock( neighbourPosition );
-						var neighbourBlock = Map.GetBlockType( neighbourBlockId );
+						var neighbourBlockId = VoxelWorld.GetBlock( neighbourPosition );
+						var neighbourBlock = VoxelWorld.GetBlockType( neighbourBlockId );
 
 						if ( neighbourBlock.IsTranslucent )
 						{
 							if ( lightLevel == 15 && neighbourPosition.z == node.z - 1 && !neighbourBlock.AttenuatesSunLight )
 							{
-								Map.AddSunLight( neighbourPosition, lightLevel );
+								VoxelWorld.AddSunLight( neighbourPosition, lightLevel );
 							}
 							else if ( lightLevel == 15 && neighbourPosition.z == node.z + 1 )
 							{
@@ -248,7 +248,7 @@ namespace Facepunch.Voxels
 							}
 							else
 							{
-								Map.AddSunLight( neighbourPosition, (byte)(lightLevel - 1) );
+								VoxelWorld.AddSunLight( neighbourPosition, (byte)(lightLevel - 1) );
 							}
 						}
 					}
@@ -268,12 +268,12 @@ namespace Facepunch.Voxels
 
 				for ( var i = 0; i < 6; i++ )
 				{
-					var neighbourPosition = Map.GetAdjacentPosition( node.Position, i );
-					var lightLevel = Map.GetTorchLight( neighbourPosition, channel );
+					var neighbourPosition = VoxelWorld.GetAdjacentPosition( node.Position, i );
+					var lightLevel = VoxelWorld.GetTorchLight( neighbourPosition, channel );
 
 					if ( lightLevel != 0 && lightLevel < node.Value )
 					{
-						Map.SetTorchLight( neighbourPosition, channel, 0 );
+						VoxelWorld.SetTorchLight( neighbourPosition, channel, 0 );
 
 						removeQueue.Enqueue( new LightRemoveNode
 						{
@@ -297,19 +297,19 @@ namespace Facepunch.Voxels
 				if ( !addQueue.TryDequeue( out var node ) )
 					continue;
 
-				var lightLevel = Map.GetTorchLight( node.Position, channel );
+				var lightLevel = VoxelWorld.GetTorchLight( node.Position, channel );
 
 				for ( var i = 0; i < 6; i++ )
 				{
-					var neighbourPosition = Map.GetAdjacentPosition( node.Position, i );
-					var neighbourBlockId = Map.GetBlock( neighbourPosition );
-					var neighbourBlock = Map.GetBlockType( neighbourBlockId );
+					var neighbourPosition = VoxelWorld.GetAdjacentPosition( node.Position, i );
+					var neighbourBlockId = VoxelWorld.GetBlock( neighbourPosition );
+					var neighbourBlock = VoxelWorld.GetBlockType( neighbourBlockId );
 
-					if ( Map.GetTorchLight( neighbourPosition, channel ) + 2 <= lightLevel )
+					if ( VoxelWorld.GetTorchLight( neighbourPosition, channel ) + 2 <= lightLevel )
 					{
 						if ( neighbourBlock.IsTranslucent )
 						{
-							Map.AddTorchLight( neighbourPosition, channel, (byte)((lightLevel - 1) * neighbourBlock.LightFilter[channel]) );
+							VoxelWorld.AddTorchLight( neighbourPosition, channel, (byte)((lightLevel - 1) * neighbourBlock.LightFilter[channel]) );
 						}
 					}
 				}

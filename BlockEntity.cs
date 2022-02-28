@@ -9,7 +9,7 @@ namespace Facepunch.Voxels
 		public IntVector3 BlockPosition { get; set; }
 		public BlockType BlockType { get; set; }
 		public Chunk Chunk { get; set; }
-		public Map Map { get; set; }
+		public VoxelWorld VoxelWorld { get; set; }
 
 		public void CenterOnBlock( bool centerHorizontally = true, bool centerVertically = true )
 		{
@@ -27,7 +27,7 @@ namespace Facepunch.Voxels
 				centerBounds.z = voxelSize;
 			}
 
-			Position = Map.ToSourcePosition( BlockPosition ) + centerBounds * 0.5f;
+			Position = VoxelWorld.ToSourcePosition( BlockPosition ) + centerBounds * 0.5f;
 		}
 
 		public void CenterOnSide( BlockFace face )
@@ -72,7 +72,7 @@ namespace Facepunch.Voxels
 				centerBounds.z = voxelSize * 0.5f;
 			}
 
-			Position = Map.ToSourcePosition( BlockPosition ) + centerBounds;
+			Position = VoxelWorld.ToSourcePosition( BlockPosition ) + centerBounds;
 		}
 
 		public virtual void Initialize()

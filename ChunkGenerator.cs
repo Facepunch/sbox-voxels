@@ -9,11 +9,11 @@ namespace Facepunch.Voxels
 	public class ChunkGenerator
 	{
 		protected Chunk Chunk { get; private set; }
-		protected Map Map { get; private set; }
+		protected VoxelWorld VoxelWorld { get; private set; }
 
-		public void Setup( Map map, Chunk chunk )
+		public void Setup( VoxelWorld world, Chunk chunk )
 		{
-			Map = map;
+			VoxelWorld = world;
 			Chunk = chunk;
 		}
 

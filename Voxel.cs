@@ -10,11 +10,11 @@
 		public IntVector3 Position;
 		public IntVector3 LocalPosition;
 
-		public Chunk Chunk => Map.Current.GetChunk( Position );
+		public Chunk Chunk => VoxelWorld.Current.GetChunk( Position );
 
 		public BlockData GetData<T>() where T : BlockData => Chunk.GetData<T>( LocalPosition );
 		public BlockData GetOrCreateData<T>() where T : BlockData => Chunk.GetOrCreateData<T>( LocalPosition );
-		public BlockType GetBlockType() => Map.Current.GetBlockType( BlockId );
+		public BlockType GetBlockType() => VoxelWorld.Current.GetBlockType( BlockId );
 
 		public byte GetSunLight() => Chunk.LightMap.GetSunLight( LocalPosition );
 		public byte GetRedTorchLight() => Chunk.LightMap.GetRedTorchLight( LocalPosition );

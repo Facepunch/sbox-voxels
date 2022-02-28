@@ -5,7 +5,7 @@ namespace Facepunch.Voxels
 {
 	public class BlockType
 	{
-		public Map Map { get; init; }
+		public VoxelWorld VoxelWorld { get; init; }
 
 		public virtual string DefaultTexture => "";
 		public virtual string FriendlyName => "";
@@ -23,7 +23,7 @@ namespace Facepunch.Voxels
 		{
 			if ( string.IsNullOrEmpty( DefaultTexture ) ) return 0;
 
-			return Map.BlockAtlas.GetTextureId( DefaultTexture );
+			return VoxelWorld.BlockAtlas.GetTextureId( DefaultTexture );
 		}
 
 		public virtual BlockData CreateDataInstance() => new BlockData();
@@ -50,7 +50,7 @@ namespace Facepunch.Voxels
 
 		public BlockType()
 		{
-			Map = Map.Current;
+			VoxelWorld = VoxelWorld.Current;
 		}
 	}
 }

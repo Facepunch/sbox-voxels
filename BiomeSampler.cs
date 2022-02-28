@@ -10,22 +10,22 @@ namespace Facepunch.Voxels
 	{
 		private FastNoiseLite[] Noises { get; set; }
 		private int SampleCount { get; set; } = 3;
-		private Map Map { get; set; }
+		private VoxelWorld VoxelWorld { get; set; }
 
-		public BiomeSampler( Map map )
+		public BiomeSampler( VoxelWorld world )
 		{
 			Noises = new FastNoiseLite[SampleCount];
 
 			for ( var i = 0; i < SampleCount; i++)
 			{
-				Noises[i] = new FastNoiseLite( map.Seed + i );
+				Noises[i] = new FastNoiseLite( world.Seed + i );
 				Noises[i].SetNoiseType( FastNoiseLite.NoiseType.OpenSimplex2 );
 				Noises[i].SetFractalType( FastNoiseLite.FractalType.FBm );
 				Noises[i].SetFractalOctaves( 5 );
 				Noises[i].SetFrequency( 1 / 800.0f );
 			}
 
-			Map = map;
+			VoxelWorld = world;
 		}
 
 		public Biome GetBiomeAt( int x, int y )
@@ -33,9 +33,9 @@ namespace Facepunch.Voxels
 			var currentBiome = (Biome)null;
 			var currentDeviation = float.PositiveInfinity;
 
-			for ( var b = 0; b < Map.Biomes.Count; b++ )
+			for ( var b = 0; b < VoxelWorld.Biomes.Count; b++ )
 			{
-				var biome = Map.Biomes[b];
+				var biome = VoxelWorld.Biomes[b];
 
 				float deviation = 0f;
 

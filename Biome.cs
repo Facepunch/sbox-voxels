@@ -5,7 +5,7 @@
 		public virtual string Name => "";
 
 		public byte Id { get; set; }
-		public Map Map { get; set; }
+		public VoxelWorld VoxelWorld { get; set; }
 		public byte TopBlockId { get; protected set; }
 		public byte BeachBlockId { get; protected set; }
 		public byte GroundBlockId { get; protected set; }

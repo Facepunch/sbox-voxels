@@ -6,7 +6,7 @@ namespace Facepunch.Voxels
 	{
 		public static ChunkViewer GetChunkViewer( this Client client )
 		{
-			return Map.Current?.GetViewer( client );
+			return VoxelWorld.Current?.GetViewer( client );
 		}
 	}
 }

@@ -15,11 +15,11 @@ namespace Facepunch.Voxels
 		[ClientRpc]
 		public static void UnloadChunkForClient( int x, int y, int z )
 		{
-			var chunk = Map.Current.GetChunk( new IntVector3( x, y, z ) );
+			var chunk = VoxelWorld.Current.GetChunk( new IntVector3( x, y, z ) );
 
 			if ( chunk.IsValid() )
 			{
-				Map.Current.RemoveChunk( chunk );
+				VoxelWorld.Current.RemoveChunk( chunk );
 			}
 		}
 
@@ -34,8 +34,8 @@ namespace Facepunch.Voxels
 		{
 			if ( Entity is Client client && client.Pawn.IsValid() )
 			{
-				var voxelPosition = Map.Current.ToVoxelPosition( client.Pawn.Position );
-				return Map.Current.IsInBounds( voxelPosition );
+				var voxelPosition = VoxelWorld.Current.ToVoxelPosition( client.Pawn.Position );
+				return VoxelWorld.Current.IsInBounds( voxelPosition );
 			}
 
 			return false;
@@ -43,7 +43,7 @@ namespace Facepunch.Voxels
 
 		public bool HasLoadedMinimumChunks()
 		{
-			return LoadedChunks.Count >= Map.Current.MinimumLoadedChunks;
+			return LoadedChunks.Count >= VoxelWorld.Current.MinimumLoadedChunks;
 		}
 
 		public bool IsChunkLoaded( IntVector3 offset )
@@ -85,12 +85,12 @@ namespace Facepunch.Voxels
 			if ( !pawn.IsValid() ) return;
 
 			var position = pawn.Position;
-			var currentMap = Map.Current;
+			var currentMap = VoxelWorld.Current;
 			var chunkBounds = currentMap.ChunkSize.Length;
 
 			foreach ( var offset in LoadedChunks )
 			{
-				var chunk = Map.Current.GetChunk( offset );
+				var chunk = VoxelWorld.Current.GetChunk( offset );
 
 				if ( chunk.IsValid() )
 				{
@@ -110,7 +110,7 @@ namespace Facepunch.Voxels
 
 			IsCurrentChunkReady = currentChunk.IsValid() && currentChunk.HasDoneFirstFullUpdate;
 
-			if ( Map.Current.IsInBounds( currentChunkOffset ) )
+			if ( VoxelWorld.Current.IsInBounds( currentChunkOffset ) )
 			{
 				AddLoadedChunk( currentChunkOffset );
 			}
@@ -125,7 +125,7 @@ namespace Facepunch.Voxels
 
 				if ( position.Distance( chunkPositionSource ) <= chunkBounds * currentMap.VoxelSize * currentMap.ChunkRenderDistance )
 				{
-					var chunk = Map.Current.GetOrCreateChunk( offset );
+					var chunk = VoxelWorld.Current.GetOrCreateChunk( offset );
 					if ( !chunk.IsValid() ) continue;
 
 					if ( !chunk.Initialized )
@@ -172,7 +172,7 @@ namespace Facepunch.Voxels
 						}
 
 						var compressed = CompressionHelper.Compress( stream.ToArray() );
-						Map.ReceiveChunks( To.Single( client ), compressed );
+						VoxelWorld.ReceiveChunks( To.Single( client ), compressed );
 					}
 				}
 

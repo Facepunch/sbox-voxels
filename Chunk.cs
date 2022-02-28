@@ -47,7 +47,7 @@ namespace Facepunch.Voxels
 		public IntVector3 Center;
 		public IntVector3 Offset;
 		public IntVector3 Size;
-		public Map Map;
+		public VoxelWorld World;
 
 		public PhysicsBody Body;
 		public PhysicsShape Shape;
@@ -73,22 +73,22 @@ namespace Facepunch.Voxels
 
 		}
 
-		public Chunk( Map map, int x, int y, int z )
+		public Chunk( VoxelWorld world, int x, int y, int z )
 		{
 			HasOnlyAirBlocks = true;
-			VoxelSize = map.VoxelSize;
-			SizeX = map.ChunkSize.x;
-			SizeY = map.ChunkSize.y;
-			SizeZ = map.ChunkSize.z;
+			VoxelSize = world.VoxelSize;
+			SizeX = world.ChunkSize.x;
+			SizeY = world.ChunkSize.y;
+			SizeZ = world.ChunkSize.z;
 			Size = new IntVector3( SizeX, SizeY, SizeZ );
 			Center = new IntVector3( SizeX / 2, SizeY / 2, SizeZ / 2 );
 			Bounds = new Vector3( SizeX, SizeY, SizeZ ) * VoxelSize;
 			Blocks = new byte[SizeX * SizeY * SizeZ];
 			Entities = new();
-			LightMap = new ChunkLightMap( this, map );
+			LightMap = new ChunkLightMap( this, world );
 			Offset = new IntVector3( x, y, z );
-			Body = PhysicsWorld.WorldBody;
-			Map = map;
+			Body = Map.Physics.Body;
+			World = world;
 		}
 
 		public async Task Initialize()
@@ -106,7 +106,7 @@ namespace Facepunch.Voxels
 
 			if ( IsClient )
 			{
-				var material = Material.Load( Map.VoxelMaterial );
+				var material = Material.Load( World.VoxelMaterial );
 				TranslucentMesh = new Mesh( material );
 				OpaqueMesh = new Mesh( material );
 
@@ -118,7 +118,7 @@ namespace Facepunch.Voxels
 
 			Event.Register( this );
 
-			Map.AddToInitialUpdateList( this );
+			World.AddToInitialUpdateList( this );
 
 			if ( IsClient )
 			{
@@ -131,7 +131,7 @@ namespace Facepunch.Voxels
 			if ( !IsInside( localPosition ) ) return;
 
 			var position = Offset + localPosition;
-			var block = Map.GetBlockType( blockId );
+			var block = World.GetBlockType( blockId );
 
 			SetBlock( localPosition, blockId );
 			block.OnBlockAdded( this, position.x, position.y, position.z, (int)BlockFace.Top );
@@ -243,7 +243,7 @@ namespace Facepunch.Voxels
 
 			UpdateVerticesResult = StartUpdateVerticesTask();
 
-			if ( Map.BuildCollisionInThread )
+			if ( World.BuildCollisionInThread )
 			{
 				BuildCollision();
 			}
@@ -262,7 +262,7 @@ namespace Facepunch.Voxels
 					{
 						var position = new IntVector3( x, y, z );
 						var blockIndex = GetLocalPositionIndex( position );
-						var block = Map.GetBlockType( Blocks[blockIndex] );
+						var block = World.GetBlockType( Blocks[blockIndex] );
 
 						if ( block.LightLevel.x > 0 || block.LightLevel.y > 0 || block.LightLevel.z > 0 )
 						{
@@ -297,22 +297,22 @@ namespace Facepunch.Voxels
 
 		public IEnumerable<Chunk> GetNeighbours()
 		{
-			var chunk = Map.GetChunk( GetAdjacentChunkOffset( BlockFace.Top ) );
+			var chunk = World.GetChunk( GetAdjacentChunkOffset( BlockFace.Top ) );
 			if ( chunk.IsValid() ) yield return chunk;
 
-			chunk = Map.GetChunk( GetAdjacentChunkOffset( BlockFace.Bottom ) );
+			chunk = World.GetChunk( GetAdjacentChunkOffset( BlockFace.Bottom ) );
 			if ( chunk.IsValid() ) yield return chunk;
 
-			chunk = Map.GetChunk( GetAdjacentChunkOffset( BlockFace.North ) );
+			chunk = World.GetChunk( GetAdjacentChunkOffset( BlockFace.North ) );
 			if ( chunk.IsValid() ) yield return chunk;
 
-			chunk = Map.GetChunk( GetAdjacentChunkOffset( BlockFace.East ) );
+			chunk = World.GetChunk( GetAdjacentChunkOffset( BlockFace.East ) );
 			if ( chunk.IsValid() ) yield return chunk;
 
-			chunk = Map.GetChunk( GetAdjacentChunkOffset( BlockFace.South ) );
+			chunk = World.GetChunk( GetAdjacentChunkOffset( BlockFace.South ) );
 			if ( chunk.IsValid() ) yield return chunk;
 
-			chunk = Map.GetChunk( GetAdjacentChunkOffset( BlockFace.West ) );
+			chunk = World.GetChunk( GetAdjacentChunkOffset( BlockFace.West ) );
 			if ( chunk.IsValid() ) yield return chunk;
 		}
 
@@ -373,18 +373,18 @@ namespace Facepunch.Voxels
 
 				var transform = new Transform( Offset * (float)VoxelSize );
 
-				OpaqueSceneObject = new SceneObject( OpaqueModel, transform );
-				OpaqueSceneObject.SetValue( "VoxelSize", VoxelSize );
-				OpaqueSceneObject.SetValue( "LightMap", LightMap.Texture );
+				OpaqueSceneObject = new SceneObject( Map.Scene, OpaqueModel, transform );
+				OpaqueSceneObject.Attributes.Set( "VoxelSize", VoxelSize );
+				OpaqueSceneObject.Attributes.Set( "LightMap", LightMap.Texture );
 
-				TranslucentSceneObject = new SceneObject( TranslucentModel, transform );
-				TranslucentSceneObject.SetValue( "VoxelSize", VoxelSize );
-				TranslucentSceneObject.SetValue( "LightMap", LightMap.Texture );
+				TranslucentSceneObject = new SceneObject( Map.Scene, TranslucentModel, transform );
+				TranslucentSceneObject.Attributes.Set( "VoxelSize", VoxelSize );
+				TranslucentSceneObject.Attributes.Set( "LightMap", LightMap.Texture );
 
 				IsModelCreated = true;
 			}
 
-			if ( !Map.BuildCollisionInThread )
+			if ( !World.BuildCollisionInThread )
 			{
 				BuildCollision();
 			}
@@ -405,7 +405,7 @@ namespace Facepunch.Voxels
 				var z = reader.ReadByte();
 				var blockIndex = GetLocalPositionIndex( x, y, z );
 				var blockId = Blocks[blockIndex];
-				var block = Map.GetBlockType( blockId );
+				var block = World.GetBlockType( blockId );
 				var position = new IntVector3( x, y, z );
 
 				if ( !Data.TryGetValue( position, out var blockData ) )
@@ -463,7 +463,7 @@ namespace Facepunch.Voxels
 				return data as T;
 
 			var blockId = GetLocalPositionBlock( position );
-			var block = Map.Current.GetBlockType( blockId );
+			var block = VoxelWorld.Current.GetBlockType( blockId );
 
 			data = block.CreateDataInstance();
 			data.Chunk = this;
@@ -536,7 +536,7 @@ namespace Facepunch.Voxels
 						var blockId = Blocks[index];
 						if ( blockId == 0 ) continue;
 
-						var block = Map.GetBlockType( blockId );
+						var block = World.GetBlockType( blockId );
 						var entityName = isServer ? block.ServerEntity : block.ClientEntity;
 
 						if ( !string.IsNullOrEmpty( entityName ) )
@@ -561,7 +561,7 @@ namespace Facepunch.Voxels
 				{
 					var position = new IntVector3( x, y, z );
 					var blockId = GetLocalPositionBlock( position );
-					var block = Map.GetBlockType( blockId );
+					var block = World.GetBlockType( blockId );
 
 					if ( block.IsTranslucent )
 					{
@@ -578,7 +578,7 @@ namespace Facepunch.Voxels
 			{
 				for ( var y = 0; y < SizeY; y++ )
 				{
-					var lightLevel = Map.GetSunLight( chunkAbove.Offset + new IntVector3( x, y, 0 ) );
+					var lightLevel = World.GetSunLight( chunkAbove.Offset + new IntVector3( x, y, 0 ) );
 
 					if ( lightLevel > 0 )
 					{
@@ -602,7 +602,7 @@ namespace Facepunch.Voxels
 		{
 			var directionIndex = (int)direction;
 			var neighbourPosition = Offset + (BlockDirections[directionIndex] * GetSizeInDirection( direction ));
-			return Map.GetChunk( neighbourPosition );
+			return World.GetChunk( neighbourPosition );
 		}
 
 		public void SetBlock( IntVector3 position, byte blockId )
@@ -659,7 +659,7 @@ namespace Facepunch.Voxels
 
 			if ( Body.IsValid() && Shape.IsValid() )
 			{
-				Body.RemoveShape( Shape );
+				Shape.Remove();
 				Shape = null;
 			}
 
@@ -681,7 +681,7 @@ namespace Facepunch.Voxels
 		{
 			var mapPosition = Offset + position;
 
-			entity.Map = Map;
+			entity.VoxelWorld = World;
 			entity.Chunk = this;
 			entity.BlockPosition = mapPosition;
 			entity.LocalBlockPosition = position;
@@ -782,12 +782,12 @@ namespace Facepunch.Voxels
 
 		private void UpdateNeighbourLightMap( string name, BlockFace direction, bool recurseNeighbours = false )
 		{
-			var neighbour = Map.GetChunk( GetAdjacentChunkOffset( direction ) );
+			var neighbour = World.GetChunk( GetAdjacentChunkOffset( direction ) );
 
 			if ( neighbour.IsValid() )
 			{
-				TranslucentSceneObject?.SetValue( name, neighbour.LightMap.Texture );
-				OpaqueSceneObject?.SetValue( name, neighbour.LightMap.Texture );
+				TranslucentSceneObject?.Attributes.Set( name, neighbour.LightMap.Texture );
+				OpaqueSceneObject?.Attributes.Set( name, neighbour.LightMap.Texture );
 				if ( recurseNeighbours ) neighbour.UpdateAdjacents();
 			}
 		}
@@ -860,12 +860,12 @@ namespace Facepunch.Voxels
 							var blockId = Blocks[index];
 							if ( blockId == 0 ) continue;
 
-							var block = Map.GetBlockType( blockId );
+							var block = World.GetBlockType( blockId );
 
 							for ( int faceSide = 0; faceSide < 6; faceSide++ )
 							{
-								var neighbourId = Map.GetAdjacentBlock( Offset + position, faceSide );
-								var neighbourBlock = Map.GetBlockType( neighbourId );
+								var neighbourId = World.GetAdjacentBlock( Offset + position, faceSide );
+								var neighbourBlock = World.GetBlockType( neighbourId );
 								var collisionIndex = collisionIndices.Count;
 								var textureId = block.GetTextureId( (BlockFace)faceSide, this, x, y, z );
 								var normal = (byte)faceSide;
@@ -941,7 +941,7 @@ namespace Facepunch.Voxels
 							data.IsDirty = false;
 						}
 
-						Map.ReceiveDataUpdate( To.Everyone, Offset.x, Offset.y, Offset.z, stream.ToArray() );
+						VoxelWorld.ReceiveDataUpdate( To.Everyone, Offset.x, Offset.y, Offset.z, stream.ToArray() );
 					}
 				}
 			}
@@ -950,7 +950,7 @@ namespace Facepunch.Voxels
 
 			if ( IsFullUpdateTaskRunning() ) return;
 
-			if ( !Map.BuildCollisionInThread && QueueRebuild )
+			if ( !World.BuildCollisionInThread && QueueRebuild )
 			{
 				BuildCollision();
 				QueueRebuild = false;
@@ -1003,7 +1003,7 @@ namespace Facepunch.Voxels
 			{
 				if ( ShapesToDelete.TryDequeue( out var shape ) )
 				{
-					Body.RemoveShape( shape );
+					shape.Remove();
 				}
 			}
 		}
@@ -1037,7 +1037,7 @@ namespace Facepunch.Voxels
 
 				UpdateVerticesResult = StartUpdateVerticesTask();
 
-				if ( Map.BuildCollisionInThread )
+				if ( World.BuildCollisionInThread )
 				{
 					BuildCollision();
 				}
