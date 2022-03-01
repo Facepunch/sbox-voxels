@@ -6,6 +6,7 @@ namespace Facepunch.Voxels
 	public class BlockType
 	{
 		public VoxelWorld VoxelWorld { get; init; }
+		public byte BlockId { get; set; }
 
 		public virtual string DefaultTexture => "";
 		public virtual string FriendlyName => "";

@@ -566,6 +566,7 @@ namespace Facepunch.Voxels
 
 			Log.Info( $"[Server] Initializing block type {type.GetType().Name} with id #{NextAvailableBlockId}" );
 
+			type.BlockId = NextAvailableBlockId;
 			type.Initialize();
 
 			BlockTypes[type.GetType().Name] = NextAvailableBlockId;
