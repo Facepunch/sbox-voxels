@@ -119,7 +119,7 @@ namespace Facepunch.Voxels
 
 		public ChunkRenderLayer CreateRenderLayer( string materialName )
 		{
-			var material = Material.Load( World.OpaqueMaterial );
+			var material = Material.Load( materialName );
 			var layer = new ChunkRenderLayer( this );
 			var boundsMin = Vector3.Zero;
 			var boundsMax = boundsMin + new Vector3( SizeX, SizeY, SizeZ ) * VoxelSize;
