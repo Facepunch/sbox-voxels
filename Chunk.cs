@@ -51,6 +51,8 @@ namespace Facepunch.Voxels
 		public Dictionary<IntVector3, BlockData> Data { get; set; } = new();
 		public ChunkVertexData UpdateVerticesResult { get; set; }
 
+		public Queue<IntVector3> LiquidFlowQueue { get; set; } = new();
+		public HashSet<IntVector3> LiquidFlowSet { get; set; } = new();
 		public HashSet<IntVector3> DirtyData { get; set; } = new();
 		public bool HasDoneFirstFullUpdate { get; set; }
 		public bool IsFullUpdateActive { get; set; }
@@ -87,6 +89,7 @@ namespace Facepunch.Voxels
 
 		private ConcurrentQueue<PhysicsShape> ShapesToDelete { get; set; } = new();
 		private Dictionary<int, BlockEntity> Entities { get; set; }
+		private TimeUntil NextLiquidFlow { get; set; }
 		private object VertexLock = new object();
 		private bool QueuedFullUpdate { get; set; }
 		private bool IsInitializing { get; set; }
@@ -536,7 +539,7 @@ namespace Facepunch.Voxels
 			return Blocks[index];
 		}
 
-		public IntVector3 ToMapPosition( IntVector3 position )
+		public IntVector3 ToWorldPosition( IntVector3 position )
 		{
 			return Offset + position;
 		}
@@ -968,6 +971,53 @@ namespace Facepunch.Voxels
 			}
 
 			DirtyData.Clear();
+
+			if ( NextLiquidFlow )
+			{
+				foreach ( var position in LiquidFlowSet )
+				{
+					LiquidFlowQueue.Enqueue( position );
+				}
+
+				LiquidFlowSet.Clear();
+
+				while ( LiquidFlowQueue.Count > 0 )
+				{
+					var position = LiquidFlowQueue.Dequeue();
+					var currentBlockId = GetLocalPositionBlock( position );
+					var currentBlock = World.GetBlockType( currentBlockId );
+					if ( !currentBlock.IsLiquid ) continue;
+
+					var worldPosition = ToWorldPosition( position );
+
+					var blockBelowPosition = worldPosition + BlockDirections[1];
+					var blockBelowId = World.GetBlock( blockBelowPosition );
+
+					for ( var i = 0; i < 6; i++ )
+					{
+						var face = (BlockFace)i;
+						if ( face == BlockFace.Top ) continue;
+						if ( (blockBelowId == 0 || blockBelowId == currentBlockId) && face != BlockFace.Bottom ) continue;
+
+						var neighbourBlockPosition = worldPosition + BlockDirections[i];
+						var neighbourBlockId = World.GetBlock( neighbourBlockPosition );
+
+						if ( neighbourBlockId == 0 )
+						{
+							World.SetBlockOnServer( neighbourBlockPosition, currentBlockId );
+
+							var neighbourChunk = World.GetChunk( neighbourBlockPosition );
+
+							if ( neighbourChunk.IsValid() )
+							{
+								neighbourChunk.LiquidFlowSet.Add( World.ToLocalPosition( neighbourBlockPosition ) );
+							}
+						}
+					}
+				}
+
+				NextLiquidFlow = 1f;
+			}
 
 			if ( IsFullUpdateTaskRunning() ) return;
 

@@ -976,6 +976,11 @@ namespace Facepunch.Voxels
 					chunk.RemoveEntity( localPosition );
 				}
 
+				if ( block.IsLiquid )
+				{
+					chunk.LiquidFlowSet.Add( localPosition );
+				}
+
 				return true;
 
 			}
