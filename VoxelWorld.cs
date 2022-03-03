@@ -56,7 +56,8 @@ namespace Facepunch.Voxels
 					var chunkUnloadDistance = reader.ReadInt32();
 					var minimumLoadedChunks = reader.ReadInt32();
 					var buildCollisionInThread = reader.ReadBoolean();
-					var voxelMaterial = reader.ReadString();
+					var opaqueMaterial = reader.ReadString();
+					var translucentMaterial = reader.ReadString();
 
 					Current = new VoxelWorld( seed )
 					{
@@ -68,7 +69,8 @@ namespace Facepunch.Voxels
 						ChunkUnloadDistance = chunkUnloadDistance,
 						MinimumLoadedChunks = minimumLoadedChunks,
 						BuildCollisionInThread = buildCollisionInThread,
-						VoxelMaterial = voxelMaterial
+						OpaqueMaterial = opaqueMaterial,
+						TranslucentMaterial = translucentMaterial
 					};
 
 					Current.LoadBlockAtlas( reader.ReadString() );
@@ -219,7 +221,8 @@ namespace Facepunch.Voxels
 		public BlockAtlas BlockAtlas { get; private set; }
 		public IntVector3 MaxSize { get; private set; }
 		public bool BuildCollisionInThread { get; private set; }
-		public string VoxelMaterial { get; private set; }
+		public string OpaqueMaterial { get; private set; }
+		public string TranslucentMaterial { get; private set; }
 		public int MinimumLoadedChunks { get; private set; }
 		public int ChunkRenderDistance { get; private set; }
 		public int ChunkUnloadDistance { get; private set; }
@@ -429,7 +432,8 @@ namespace Facepunch.Voxels
 					writer.Write( ChunkUnloadDistance );
 					writer.Write( MinimumLoadedChunks );
 					writer.Write( BuildCollisionInThread );
-					writer.Write( VoxelMaterial );
+					writer.Write( OpaqueMaterial );
+					writer.Write( TranslucentMaterial );
 					writer.Write( BlockAtlasFileName );
 					writer.Write( BlockData.Count - 1 );
 
@@ -480,9 +484,10 @@ namespace Facepunch.Voxels
 			MinimumLoadedChunks = minimum;
 		}
 
-		public void SetVoxelMaterial( string materialName )
+		public void SetMaterials( string opaqueMaterialName, string translucentMaterialName )
 		{
-			VoxelMaterial = materialName;
+			OpaqueMaterial = opaqueMaterialName;
+			TranslucentMaterial = translucentMaterialName;
 		}
 
 		public void SetBuildCollisionInThread( bool value )

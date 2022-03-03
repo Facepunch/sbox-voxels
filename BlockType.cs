@@ -15,6 +15,7 @@ namespace Facepunch.Voxels
 		public virtual bool HasTexture => true;
 		public virtual bool IsPassable => false;
 		public virtual bool IsTranslucent => false;
+		public virtual bool UseTransparency => false;
 		public virtual IntVector3 LightLevel => 0;
 		public virtual Vector3 LightFilter => Vector3.One;
 		public virtual string ServerEntity => "";

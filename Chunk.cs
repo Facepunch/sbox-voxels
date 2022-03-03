@@ -8,12 +8,41 @@ using System.Threading.Tasks;
 
 namespace Facepunch.Voxels
 {
+	public partial class ChunkRenderLayer
+	{
+		public List<BlockVertex> Vertices { get; set; }
+		public SceneObject SceneObject { get; set; }
+		public ModelBuilder ModelBuilder { get; set; }
+		public Chunk Chunk { get; set; }
+		public Model Model { get; set; }
+		public Mesh Mesh { get; set; }
+
+		public ChunkRenderLayer( Chunk chunk )
+		{
+			Vertices = new();
+			Chunk = chunk;
+		}
+
+		public void Initialize()
+		{
+			ModelBuilder = new ModelBuilder();
+			ModelBuilder.AddMesh( Mesh );
+
+			Model = ModelBuilder.Create();
+
+			var transform = new Transform( Chunk.Offset * (float)Chunk.VoxelSize );
+
+			SceneObject = new SceneObject( Map.Scene, Model, transform );
+			SceneObject.Attributes.Set( "VoxelSize", Chunk.VoxelSize );
+			SceneObject.Attributes.Set( "LightMap", Chunk.LightMap.Texture );
+		}
+	}
+
 	public partial class Chunk : IValid
 	{
 		public struct ChunkVertexData
 		{
-			public BlockVertex[] TranslucentVertices;
-			public BlockVertex[] OpaqueVertices;
+			public BlockVertex[][] Vertices;
 			public Vector3[] CollisionVertices;
 			public int[] CollisionIndices;
 			public bool IsValid;
@@ -39,6 +68,10 @@ namespace Facepunch.Voxels
 
 		public byte[] Blocks;
 
+		public ChunkRenderLayer TranslucentLayer;
+		public ChunkRenderLayer AlphaTestLayer;
+		public ChunkRenderLayer OpaqueLayer;
+		public List<ChunkRenderLayer> RenderLayers;
 		public ChunkLightMap LightMap { get; set; }
 		public int VoxelSize;
 		public int SizeX;
@@ -54,17 +87,9 @@ namespace Facepunch.Voxels
 
 		private ConcurrentQueue<PhysicsShape> ShapesToDelete { get; set; } = new();
 		private Dictionary<int, BlockEntity> Entities { get; set; }
-		private SceneObject TranslucentSceneObject { get; set; }
-		private SceneObject OpaqueSceneObject { get; set; }
-		private ModelBuilder TranslucentModelBuilder { get; set; }
-		private Model TranslucentModel { get; set; }
-		private ModelBuilder OpaqueModelBuilder { get; set; }
 		private object VertexLock = new object();
 		private bool QueuedFullUpdate { get; set; }
 		private bool IsInitializing { get; set; }
-		private Model OpaqueModel { get; set; }
-		private Mesh TranslucentMesh { get; set; }
-		private Mesh OpaqueMesh { get; set; }
 
 		public bool IsValid => Body.IsValid();
 
@@ -76,6 +101,7 @@ namespace Facepunch.Voxels
 		public Chunk( VoxelWorld world, int x, int y, int z )
 		{
 			HasOnlyAirBlocks = true;
+			RenderLayers = new();
 			VoxelSize = world.VoxelSize;
 			SizeX = world.ChunkSize.x;
 			SizeY = world.ChunkSize.y;
@@ -89,6 +115,18 @@ namespace Facepunch.Voxels
 			Offset = new IntVector3( x, y, z );
 			Body = Map.Physics.Body;
 			World = world;
+		}
+
+		public ChunkRenderLayer CreateRenderLayer( string materialName )
+		{
+			var material = Material.Load( World.OpaqueMaterial );
+			var layer = new ChunkRenderLayer( this );
+			var boundsMin = Vector3.Zero;
+			var boundsMax = boundsMin + new Vector3( SizeX, SizeY, SizeZ ) * VoxelSize;
+			layer.Mesh = new Mesh( material );
+			layer.Mesh.SetBounds( boundsMin, boundsMax );
+			RenderLayers.Add( layer );
+			return layer;
 		}
 
 		public async Task Initialize()
@@ -106,14 +144,9 @@ namespace Facepunch.Voxels
 
 			if ( IsClient )
 			{
-				var material = Material.Load( World.VoxelMaterial );
-				TranslucentMesh = new Mesh( material );
-				OpaqueMesh = new Mesh( material );
-
-				var boundsMin = Vector3.Zero;
-				var boundsMax = boundsMin + new Vector3( SizeX, SizeY, SizeZ) * VoxelSize;
-				TranslucentMesh.SetBounds( boundsMin, boundsMax );
-				OpaqueMesh.SetBounds( boundsMin, boundsMax );
+				TranslucentLayer = CreateRenderLayer( World.TranslucentMaterial );
+				AlphaTestLayer = CreateRenderLayer( World.OpaqueMaterial );
+				OpaqueLayer = CreateRenderLayer( World.OpaqueMaterial );
 			}
 
 			Event.Register( this );
@@ -362,24 +395,10 @@ namespace Facepunch.Voxels
 
 			if ( !IsModelCreated )
 			{
-				TranslucentModelBuilder = new ModelBuilder();
-				OpaqueModelBuilder = new ModelBuilder();
-
-				TranslucentModelBuilder.AddMesh( TranslucentMesh );
-				OpaqueModelBuilder.AddMesh( OpaqueMesh );
-
-				TranslucentModel = TranslucentModelBuilder.Create();
-				OpaqueModel = OpaqueModelBuilder.Create();
-
-				var transform = new Transform( Offset * (float)VoxelSize );
-
-				OpaqueSceneObject = new SceneObject( Map.Scene, OpaqueModel, transform );
-				OpaqueSceneObject.Attributes.Set( "VoxelSize", VoxelSize );
-				OpaqueSceneObject.Attributes.Set( "LightMap", LightMap.Texture );
-
-				TranslucentSceneObject = new SceneObject( Map.Scene, TranslucentModel, transform );
-				TranslucentSceneObject.Attributes.Set( "VoxelSize", VoxelSize );
-				TranslucentSceneObject.Attributes.Set( "LightMap", LightMap.Texture );
+				foreach ( var layer in RenderLayers )
+				{
+					layer.Initialize();
+				}
 
 				IsModelCreated = true;
 			}
@@ -634,17 +653,12 @@ namespace Facepunch.Voxels
 				}
 			}
 
-			if ( TranslucentSceneObject != null )
+			foreach ( var layer in RenderLayers )
 			{
-				TranslucentSceneObject.Delete();
-				TranslucentSceneObject = null;
+				layer?.SceneObject.Delete();
 			}
 
-			if ( OpaqueSceneObject != null )
-			{
-				OpaqueSceneObject.Delete();
-				OpaqueSceneObject = null;
-			}
+			RenderLayers.Clear();
 
 			LightMap.Destroy();
 
@@ -734,44 +748,31 @@ namespace Facepunch.Voxels
 			{
 				if ( !UpdateVerticesResult.IsValid ) return;
 
-				if ( !OpaqueMesh.IsValid || !TranslucentMesh.IsValid )
-					return;
-
-				var translucentVertices = UpdateVerticesResult.TranslucentVertices;
-				var opaqueVertices = UpdateVerticesResult.OpaqueVertices;
-
-				int translucentVertexCount = translucentVertices.Length;
-				int opaqueVertexCount = opaqueVertices.Length;
-
 				try
 				{
-					if ( TranslucentMesh.HasVertexBuffer )
-						TranslucentMesh.SetVertexBufferSize( translucentVertexCount );
-					else
-						TranslucentMesh.CreateVertexBuffer<BlockVertex>( Math.Max( 1, translucentVertexCount ), BlockVertex.Layout );
-
-					if ( OpaqueMesh.HasVertexBuffer )
-						OpaqueMesh.SetVertexBufferSize( opaqueVertexCount );
-					else
-						OpaqueMesh.CreateVertexBuffer<BlockVertex>( Math.Max( 1, opaqueVertexCount ), BlockVertex.Layout );
-
-					translucentVertexCount = 0;
-					opaqueVertexCount = 0;
-
-					if ( opaqueVertices.Length > 0 )
+					for ( int i = 0; i < RenderLayers.Count; i++ )
 					{
-						OpaqueMesh.SetVertexBufferData( new Span<BlockVertex>( opaqueVertices ), opaqueVertexCount );
-						opaqueVertexCount += opaqueVertices.Length;
-					}
+						var layer = RenderLayers[i];
+						if ( !layer.Mesh.IsValid ) continue;
 
-					if ( translucentVertices.Length > 0 )
-					{
-						TranslucentMesh.SetVertexBufferData( new Span<BlockVertex>( translucentVertices ), translucentVertexCount );
-						translucentVertexCount += translucentVertices.Length;
-					}
+						var vertices = UpdateVerticesResult.Vertices[i];
+						var vertexCount = vertices.Length;
 
-					OpaqueMesh.SetVertexRange( 0, opaqueVertexCount );
-					TranslucentMesh.SetVertexRange( 0, translucentVertexCount );
+						if ( layer.Mesh.HasVertexBuffer )
+							layer.Mesh.SetVertexBufferSize( vertexCount );
+						else
+							layer.Mesh.CreateVertexBuffer<BlockVertex>( Math.Max( 1, vertexCount ), BlockVertex.Layout );
+
+						vertexCount = 0;
+
+						if ( vertices.Length > 0 )
+						{
+							layer.Mesh.SetVertexBufferData( new Span<BlockVertex>( vertices ), vertexCount );
+							vertexCount += vertices.Length;
+						}
+
+						layer.Mesh.SetVertexRange( 0, vertexCount );
+					}
 				}
 				catch ( Exception e )
 				{
@@ -786,8 +787,12 @@ namespace Facepunch.Voxels
 
 			if ( neighbour.IsValid() )
 			{
-				TranslucentSceneObject?.Attributes.Set( name, neighbour.LightMap.Texture );
-				OpaqueSceneObject?.Attributes.Set( name, neighbour.LightMap.Texture );
+				for ( int i = 0; i < RenderLayers.Count; i++ )
+				{
+					var layer = RenderLayers[i];
+					layer.SceneObject?.Attributes.Set( name, neighbour.LightMap.Texture );
+				}
+
 				if ( recurseNeighbours ) neighbour.UpdateAdjacents();
 			}
 		}
@@ -838,8 +843,12 @@ namespace Facepunch.Voxels
 
 			lock ( VertexLock )
 			{
-				var translucentVertices = new List<BlockVertex>();
-				var opaqueVertices = new List<BlockVertex>();
+				for ( var i = 0; i < RenderLayers.Count; i++ )
+				{
+					var layer = RenderLayers[i];
+					layer.Vertices.Clear();
+				}
+
 				var collisionVertices = new List<Vector3>();
 				var collisionIndices = new List<int>();
 
@@ -893,9 +902,16 @@ namespace Facepunch.Voxels
 										var vertex = new BlockVertex( (uint)(x + vOffset.x), (uint)(y + vOffset.y), (uint)(z + vOffset.z), (uint)x, (uint)y, (uint)z, faceData );
 
 										if ( block.IsTranslucent )
-											translucentVertices.Add( vertex );
+										{ 
+											if ( block.UseTransparency )
+												TranslucentLayer.Vertices.Add( vertex );
+											else
+												AlphaTestLayer.Vertices.Add( vertex );
+										}
 										else
-											opaqueVertices.Add( vertex );
+										{
+											OpaqueLayer.Vertices.Add( vertex );
+										}
 									}
 
 									if ( shouldGenerateCollision )
@@ -909,8 +925,13 @@ namespace Facepunch.Voxels
 					}
 				}
 
-				output.TranslucentVertices = translucentVertices.ToArray();
-				output.OpaqueVertices = opaqueVertices.ToArray();
+				output.Vertices = new BlockVertex[RenderLayers.Count][];
+
+				for ( var i = 0; i < RenderLayers.Count; i++ )
+				{
+					output.Vertices[i] = RenderLayers[i].Vertices.ToArray();
+				}
+
 				output.CollisionVertices = collisionVertices.ToArray();
 				output.CollisionIndices = collisionIndices.ToArray();
 				output.IsValid = true;
