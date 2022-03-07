@@ -981,6 +981,15 @@ namespace Facepunch.Voxels
 		[Event.Tick.Client]
 		private void ClientTick()
 		{
+			if ( World.DayCycle.IsValid() )
+			{
+				for ( int i = 0; i < RenderLayers.Count; i++ )
+				{
+					var layer = RenderLayers[i];
+					layer.SceneObject?.Attributes?.Set( "GlobalBrightness", World.DayCycle.Brightness );
+				}
+			}
+
 			if ( IsFullUpdateTaskRunning() ) return;
 
 			if ( QueueRebuild && !AreAdjacentChunksUpdating() )
