@@ -1,5 +1,4 @@
-﻿using Facepunch.CoreWars.Blocks;
-using Sandbox;
+﻿using Sandbox;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -92,7 +91,7 @@ namespace Facepunch.Voxels
 					}
 
 					var biomeCount = reader.ReadInt32();
-					
+
 					for ( var i = 0; i < biomeCount; i++ )
 					{
 						var biomeId = reader.ReadByte();
@@ -218,6 +217,19 @@ namespace Facepunch.Voxels
 		public Dictionary<IntVector3, Chunk> Chunks { get; private set; } = new();
 		public List<Biome> Biomes { get; private set; } = new();
 
+		public DayCycleController DayCycle
+		{
+			get
+			{
+				if ( !CachedDayCycle.IsValid() )
+				{
+					CachedDayCycle = Entity.All.OfType<DayCycleController>().FirstOrDefault();
+				}
+
+				return CachedDayCycle;
+			}
+		}
+
 		public BlockAtlas BlockAtlas { get; private set; }
 		public IntVector3 MaxSize { get; private set; }
 		public bool BuildCollisionInThread { get; private set; }
@@ -247,6 +259,7 @@ namespace Facepunch.Voxels
 		private byte NextAvailableBiomeId { get; set; }
 		private Type ChunkGeneratorType { get; set; }
 
+		private DayCycleController CachedDayCycle;
 		private BiomeSampler BiomeSampler;
 
 		public bool IsInfinite => MaxSize == 0;
@@ -269,6 +282,23 @@ namespace Facepunch.Voxels
 			CaveNoise.SetFractalType( FastNoiseLite.FractalType.FBm );
 			CaveNoise.SetFractalOctaves( 2 );
 			CaveNoise.SetFrequency( 1f / 128f );
+
+			if ( IsServer )
+			{
+				var cycle = new DayCycleController
+				{
+					DawnSkyColor = Color.Orange,
+					DaySkyColor = Color.White,
+					NightSkyColor = Color.Black,
+					DuskSkyColor = Color.Orange,
+					DawnColor = Color.Orange,
+					DuskColor = Color.Orange,
+					DayColor = Color.White,
+					NightColor = Color.Black
+				};
+				cycle.Initialize();
+				CachedDayCycle = cycle;
+			}
 
 			NextAvailableBlockId++;
 			Current = this;
