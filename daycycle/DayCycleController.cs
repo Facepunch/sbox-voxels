@@ -6,7 +6,7 @@ namespace Facepunch.Voxels
 	public partial class DayCycleController : Entity
 	{
 		[Net] public float Brightness { get; set; } = 1f;
-		[Net] public float TimeOfDay { get; set; } = 9f;
+		[Net] public float TimeOfDay { get; set; } = 12f;
 		[Net] public float Speed { get; set; } = 0.02f;
 
 		public Color DawnColor { get; set; }
@@ -56,7 +56,7 @@ namespace Facepunch.Voxels
 			if ( environment == null ) return;
 
 			var sunAngle = ((TimeOfDay / 24f) * 360f);
-			var radius = 10000f;
+			var radius = 20000f;
 
 			environment.Color = ColorGradient.Evaluate( (1f / 24f) * TimeOfDay );
 			environment.SkyColor = SkyColorGradient.Evaluate( (1f / 24f) * TimeOfDay );
@@ -66,6 +66,8 @@ namespace Facepunch.Voxels
 
 			var direction = (Vector3.Zero - environment.Position).Normal;
 			environment.Rotation = Rotation.LookAt( direction, Vector3.Up );
+
+			DebugOverlay.Sphere( environment.Position, 1000f, Color.Red );
 
 			Brightness = BrightnessGradient.Evaluate( (1f / 24f) * TimeOfDay ).a;
 		}
