@@ -7,7 +7,7 @@ namespace Facepunch.Voxels
 	{
 		[Net] public float Brightness { get; set; } = 1f;
 		[Net] public float TimeOfDay { get; set; } = 9f;
-		[Net] public float Speed { get; set; } = 0.05f;
+		[Net] public float Speed { get; set; } = 0.02f;
 
 		public Color DawnColor { get; set; }
 		public Color DawnSkyColor { get; set; }
@@ -50,7 +50,7 @@ namespace Facepunch.Voxels
 		private void ServerTick()
 		{
 			TimeOfDay += Speed * Time.Delta;
-			if ( TimeOfDay >= 25f ) TimeOfDay = 0f;
+			if ( TimeOfDay >= 24f ) TimeOfDay = 0f;
 
 			var environment = Environment;
 			if ( environment == null ) return;
