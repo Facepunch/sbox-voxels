@@ -1,10 +1,12 @@
-﻿using System;
+﻿using Sandbox;
+using System;
 
 namespace Facepunch.Voxels
 {
 	public struct QueuedTick : IEquatable<QueuedTick>
 	{
 		public IntVector3 Position;
+		public TimeUntil Delay;
 		public byte BlockId;
 
 		#region Equality

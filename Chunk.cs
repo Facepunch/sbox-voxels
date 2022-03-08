@@ -86,8 +86,8 @@ namespace Facepunch.Voxels
 
 		private ConcurrentQueue<PhysicsShape> ShapesToDelete { get; set; } = new();
 		private Dictionary<int, BlockEntity> Entities { get; set; }
-		private HashSet<QueuedTick> QueuedTicksSet { get; set; } = new();
-		private Queue<QueuedTick> QueuedTicks { get; set; } = new();
+		private List<QueuedTick> QueuedTicks { get; set; } = new();
+		private Queue<QueuedTick> TicksToRun { get; set; } = new();
 		private object VertexLock = new object();
 		private bool QueuedFullUpdate { get; set; }
 		private bool IsInitializing { get; set; }
@@ -160,16 +160,13 @@ namespace Facepunch.Voxels
 			}
 		}
 
-		[ServerVar( "cw_queued_tick_interval" )]
-		public static float QueuedTickInterval { get; set; } = 0.2f;
-		private TimeUntil TimeUntilNextQueuedTick;
-
-		public void QueueTick( IntVector3 position, BlockType block )
+		public void QueueTick( IntVector3 position, BlockType block, float delay )
 		{
-			QueuedTicksSet.Add( new QueuedTick
+			QueuedTicks.Add( new QueuedTick
 			{
 				Position = position,
-				BlockId = block.BlockId
+				BlockId = block.BlockId,
+				Delay = delay
 			} );
 		}
 
@@ -998,26 +995,25 @@ namespace Facepunch.Voxels
 
 			DirtyBlockStates.Clear();
 
-			if ( TimeUntilNextQueuedTick )
+			for ( int i = QueuedTicks.Count - 1; i >= 0; i-- )
 			{
-				foreach ( var queued in QueuedTicksSet )
+				var tick = QueuedTicks[i];
+
+				if ( tick.Delay )
 				{
-					QueuedTicks.Enqueue( queued );
+					TicksToRun.Enqueue( tick );
+					QueuedTicks.RemoveAt( i );
 				}
+			}
 
-				QueuedTicksSet.Clear();
+			while ( TicksToRun.Count > 0 )
+			{
+				var queued = TicksToRun.Dequeue();
+				var blockId = World.GetBlock( queued.Position );
+				if ( queued.BlockId != blockId ) continue;
 
-				while ( QueuedTicks.Count > 0 )
-				{
-					var queued = QueuedTicks.Dequeue();
-					var blockId = World.GetBlock( queued.Position );
-					if ( queued.BlockId != blockId ) continue;
-
-					var block = World.GetBlockType( queued.BlockId );
-					block.Tick( queued.Position );
-				}
-
-				TimeUntilNextQueuedTick = QueuedTickInterval;
+				var block = World.GetBlockType( queued.BlockId );
+				block.Tick( queued.Position );
 			}
 
 			if ( IsFullUpdateTaskRunning() ) return;

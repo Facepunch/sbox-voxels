@@ -328,13 +328,13 @@ namespace Facepunch.Voxels
 			return GetOrCreateChunk( new IntVector3( x, y, z ) );
 		}
 
-		public void QueueTick( IntVector3 position, BlockType block )
+		public void QueueTick( IntVector3 position, BlockType block, float delay )
 		{
 			var chunk = GetChunk( position );
 
 			if ( chunk.IsValid() )
 			{
-				chunk.QueueTick( position, block );
+				chunk.QueueTick( position, block, delay );
 			}
 		}
 
@@ -682,8 +682,7 @@ namespace Facepunch.Voxels
 			return chunk.GetVoxel( x % ChunkSize.x, y % ChunkSize.y, z % ChunkSize.z );
 		}
 
-		public T GetOrCreateState
-			<T>( IntVector3 position ) where T : BlockState
+		public T GetOrCreateState<T>( IntVector3 position ) where T : BlockState
 		{
 			var chunk = GetChunk( position );
 			if ( !chunk.IsValid() ) return null;

@@ -20,6 +20,9 @@ namespace Facepunch.Voxels
 		public virtual string ServerEntity => "";
 		public virtual string ClientEntity => "";
 
+		public bool IsServer => Host.IsServer;
+		public bool IsClient => Host.IsClient;
+
 		public virtual byte GetTextureId( BlockFace face, Chunk chunk, int x, int y, int z )
 		{
 			if ( string.IsNullOrEmpty( DefaultTexture ) ) return 0;
