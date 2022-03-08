@@ -48,10 +48,10 @@ namespace Facepunch.Voxels
 			public bool IsValid;
 		}
 
-		public Dictionary<IntVector3, BlockData> Data { get; set; } = new();
+		public Dictionary<IntVector3, BlockState> BlockStates { get; set; } = new();
 		public ChunkVertexData UpdateVerticesResult { get; set; }
 
-		public HashSet<IntVector3> DirtyData { get; set; } = new();
+		public HashSet<IntVector3> DirtyBlockStates { get; set; } = new();
 		public bool HasDoneFirstFullUpdate { get; set; }
 		public bool IsFullUpdateActive { get; set; }
 		public ChunkGenerator Generator { get; set; }
@@ -413,7 +413,7 @@ namespace Facepunch.Voxels
 			QueueRebuild = false;
 		}
 
-		public void DeserializeData( BinaryReader reader )
+		public void DeserializeBlockStates( BinaryReader reader )
 		{
 			var count = reader.ReadInt32();
 
@@ -427,34 +427,34 @@ namespace Facepunch.Voxels
 				var block = World.GetBlockType( blockId );
 				var position = new IntVector3( x, y, z );
 
-				if ( !Data.TryGetValue( position, out var blockData ) )
+				if ( !BlockStates.TryGetValue( position, out var state ) )
 				{
-					blockData = block.CreateDataInstance();
-					blockData.Chunk = this;
-					blockData.LocalPosition = position;
-					Data.Add( position, blockData );
+					state = block.CreateState();
+					state.Chunk = this;
+					state.LocalPosition = position;
+					BlockStates.Add( position, state );
 				}
 
-				blockData.Deserialize( reader );
+				state.Deserialize( reader );
 			}
 		}
 
-		public void DeserializeData( byte[] data )
+		public void DeserializeBlockStates( byte[] data )
 		{
 			using ( var stream = new MemoryStream( data ) )
 			{
 				using ( var reader = new BinaryReader( stream ) )
 				{
-					DeserializeData( reader );
+					DeserializeBlockStates( reader );
 				}
 			}
 		}
 
-		public void SerializeData( BinaryWriter writer )
+		public void SerializeBlockStates( BinaryWriter writer )
 		{
-			writer.Write( Data.Count );
+			writer.Write( BlockStates.Count );
 
-			foreach ( var kv in Data )
+			foreach ( var kv in BlockStates )
 			{
 				var position = kv.Key;
 				writer.Write( (byte)position.x );
@@ -464,39 +464,39 @@ namespace Facepunch.Voxels
 			}
 		}
 
-		public byte[] SerializeData()
+		public byte[] SerializeBlockStates()
 		{
 			using ( var stream = new MemoryStream() )
 			{
 				using ( var writer = new BinaryWriter( stream ) )
 				{
-					SerializeData( writer );
+					SerializeBlockStates( writer );
 					return stream.ToArray();
 				}
 			}
 		}
 
-		public T GetOrCreateData<T>( IntVector3 position ) where T : BlockData
+		public T GetOrCreateState<T>( IntVector3 position ) where T : BlockState
 		{
-			if ( Data.TryGetValue( position, out var data ) )
-				return data as T;
+			if ( BlockStates.TryGetValue( position, out var state ) )
+				return state as T;
 
 			var blockId = GetLocalPositionBlock( position );
 			var block = VoxelWorld.Current.GetBlockType( blockId );
 
-			data = block.CreateDataInstance();
-			data.Chunk = this;
-			data.LocalPosition = position;
-			Data.Add( position, data );
+			state = block.CreateState();
+			state.Chunk = this;
+			state.LocalPosition = position;
+			BlockStates.Add( position, state );
 
-			data.IsDirty = true;
+			state.IsDirty = true;
 
-			return data as T;
+			return state as T;
 		}
 
-		public T GetData<T>( IntVector3 position ) where T : BlockData
+		public T GetState<T>( IntVector3 position ) where T : BlockState
 		{
-			if ( Data.TryGetValue( position, out var data ) )
+			if ( BlockStates.TryGetValue( position, out var data ) )
 				return data as T;
 			else
 				return null;
@@ -943,31 +943,31 @@ namespace Facepunch.Voxels
 		[Event.Tick.Server]
 		private void ServerTick()
 		{
-			if ( DirtyData.Count > 0 )
+			if ( DirtyBlockStates.Count > 0 )
 			{
 				using ( var stream = new MemoryStream() )
 				{
 					using ( var writer = new BinaryWriter( stream ) )
 					{
-						writer.Write( DirtyData.Count );
+						writer.Write( DirtyBlockStates.Count );
 
-						foreach ( var position in DirtyData )
+						foreach ( var position in DirtyBlockStates )
 						{
-							var data = GetData<BlockData>( position );
-							if ( data == null ) continue;
+							var state = GetState<BlockState>( position );
+							if ( state == null ) continue;
 							writer.Write( (byte)position.x );
 							writer.Write( (byte)position.y );
 							writer.Write( (byte)position.z );
-							data.Serialize( writer );
-							data.IsDirty = false;
+							state.Serialize( writer );
+							state.IsDirty = false;
 						}
 
-						VoxelWorld.ReceiveDataUpdate( To.Everyone, Offset.x, Offset.y, Offset.z, stream.ToArray() );
+						VoxelWorld.ReceiveBlockStateUpdate( To.Everyone, Offset.x, Offset.y, Offset.z, stream.ToArray() );
 					}
 				}
 			}
 
-			DirtyData.Clear();
+			DirtyBlockStates.Clear();
 
 			if ( IsFullUpdateTaskRunning() ) return;
 

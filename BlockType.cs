@@ -11,7 +11,6 @@ namespace Facepunch.Voxels
 		public virtual string DefaultTexture => "";
 		public virtual string FriendlyName => "";
 		public virtual bool AttenuatesSunLight => false;
-		public virtual bool IsLiquid => false;
 		public virtual bool HasTexture => true;
 		public virtual bool IsPassable => false;
 		public virtual bool IsTranslucent => false;
@@ -28,7 +27,7 @@ namespace Facepunch.Voxels
 			return VoxelWorld.BlockAtlas.GetTextureId( DefaultTexture );
 		}
 
-		public virtual BlockData CreateDataInstance() => new BlockData();
+		public virtual BlockState CreateState() => new BlockState();
 
 		public virtual bool ShouldCullFace( BlockFace face, BlockType neighbour )
 		{

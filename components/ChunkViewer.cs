@@ -166,7 +166,7 @@ namespace Facepunch.Voxels
 								writer.Write( chunk.Blocks );
 
 							chunk.LightMap.Serialize( writer );
-							chunk.SerializeData( writer );
+							chunk.SerializeBlockStates( writer );
 
 							LoadedChunks.Add( chunk.Offset );
 						}

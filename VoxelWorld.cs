@@ -158,7 +158,7 @@ namespace Facepunch.Voxels
 		}
 
 		[ClientRpc]
-		public static void ReceiveDataUpdate( int x, int y, int z, byte[] data )
+		public static void ReceiveBlockStateUpdate( int x, int y, int z, byte[] data )
 		{
 			if ( Current == null ) return;
 
@@ -167,7 +167,7 @@ namespace Facepunch.Voxels
 
 			if ( chunk.IsValid() )
 			{
-				chunk.DeserializeData( data );
+				chunk.DeserializeBlockStates( data );
 			}
 		}
 
@@ -634,7 +634,7 @@ namespace Facepunch.Voxels
 							chunk.Blocks = reader.ReadBytes( chunk.Blocks.Length );
 
 						chunk.LightMap.Deserialize( reader );
-						chunk.DeserializeData( reader );
+						chunk.DeserializeBlockStates( reader );
 
 						_ = chunk.Initialize();
 
@@ -672,22 +672,23 @@ namespace Facepunch.Voxels
 			return chunk.GetVoxel( x % ChunkSize.x, y % ChunkSize.y, z % ChunkSize.z );
 		}
 
-		public T GetOrCreateData<T>( IntVector3 position ) where T : BlockData
+		public T GetOrCreateState
+			<T>( IntVector3 position ) where T : BlockState
 		{
 			var chunk = GetChunk( position );
 			if ( !chunk.IsValid() ) return null;
 
 			var localPosition = ToLocalPosition( position );
-			return chunk.GetOrCreateData<T>( localPosition );
+			return chunk.GetOrCreateState<T>( localPosition );
 		}
 
-		public T GetData<T>( IntVector3 position ) where T : BlockData
+		public T GetState<T>( IntVector3 position ) where T : BlockState
 		{
 			var chunk = GetChunk( position );
 			if ( !chunk.IsValid() ) return null;
 
 			var localPosition = ToLocalPosition( position );
-			return chunk.GetData<T>( localPosition );
+			return chunk.GetState<T>( localPosition );
 		}
 
 		public byte GetSunLight( IntVector3 position )
@@ -988,7 +989,7 @@ namespace Facepunch.Voxels
 				var currentBlock = GetBlockType( currentBlockId );
 				currentBlock.OnBlockRemoved( chunk, position.x, position.y, position.z );
 
-				chunk.Data.Remove( localPosition );
+				chunk.BlockStates.Remove( localPosition );
 				chunk.SetBlock( blockIndex, blockId );
 
 				block.OnBlockAdded( chunk, position.x, position.y, position.z, direction );

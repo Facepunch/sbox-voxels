@@ -3,7 +3,7 @@ using System.IO;
 
 namespace Facepunch.Voxels
 {
-	public class BlockData : IValid
+	public class BlockState : IValid
 	{
 		public byte Health { get; set; }
 		public Chunk Chunk { get; set; }
@@ -17,7 +17,7 @@ namespace Facepunch.Voxels
 				if ( InternalIsDirty != value )
 				{
 					InternalIsDirty = value;
-					Chunk.DirtyData.Add( LocalPosition );
+					Chunk.DirtyBlockStates.Add( LocalPosition );
 				}
 			}
 			get
