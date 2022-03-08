@@ -7,7 +7,7 @@ namespace Facepunch.Voxels
 	{
 		public AirBlock( VoxelWorld world )
 		{
-			VoxelWorld = world;
+			World = world;
 		}
 
 		public override string FriendlyName => "Air";

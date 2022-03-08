@@ -328,6 +328,16 @@ namespace Facepunch.Voxels
 			return GetOrCreateChunk( new IntVector3( x, y, z ) );
 		}
 
+		public void QueueTick( IntVector3 position, BlockType block )
+		{
+			var chunk = GetChunk( position );
+
+			if ( chunk.IsValid() )
+			{
+				chunk.QueueTick( position, block );
+			}
+		}
+
 		public void AddToInitialUpdateList( Chunk chunk )
 		{
 			var smallestIndex = 0;
@@ -987,12 +997,12 @@ namespace Facepunch.Voxels
 				}
 
 				var currentBlock = GetBlockType( currentBlockId );
-				currentBlock.OnBlockRemoved( chunk, position.x, position.y, position.z );
+				currentBlock.OnBlockRemoved( chunk, position );
 
 				chunk.BlockStates.Remove( localPosition );
 				chunk.SetBlock( blockIndex, blockId );
 
-				block.OnBlockAdded( chunk, position.x, position.y, position.z, direction );
+				block.OnBlockAdded( chunk, position, direction );
 
 				var entityName = IsServer ? block.ServerEntity : block.ClientEntity;
 
@@ -1005,6 +1015,21 @@ namespace Facepunch.Voxels
 				else
 				{
 					chunk.RemoveEntity( localPosition );
+				}
+
+				for ( var i = 0; i < 5; i++ )
+				{
+					var neighbourPosition = position + Chunk.BlockDirections[i];
+
+					if ( IsInBounds( neighbourPosition ) )
+					{
+						var neighbourId = GetBlock( neighbourPosition );
+						var neighbourBlock = GetBlockType( neighbourId );
+						var neighbourChunk = GetChunk( neighbourPosition );
+
+						if ( neighbourChunk.IsValid() )
+							neighbourBlock.OnNeighbourUpdated( neighbourChunk, neighbourPosition, position );
+					}
 				}
 
 				return true;

@@ -50,7 +50,6 @@ namespace Facepunch.Voxels
 
 		public Dictionary<IntVector3, BlockState> BlockStates { get; set; } = new();
 		public ChunkVertexData UpdateVerticesResult { get; set; }
-
 		public HashSet<IntVector3> DirtyBlockStates { get; set; } = new();
 		public bool HasDoneFirstFullUpdate { get; set; }
 		public bool IsFullUpdateActive { get; set; }
@@ -87,6 +86,8 @@ namespace Facepunch.Voxels
 
 		private ConcurrentQueue<PhysicsShape> ShapesToDelete { get; set; } = new();
 		private Dictionary<int, BlockEntity> Entities { get; set; }
+		private HashSet<QueuedTick> QueuedTicksSet { get; set; } = new();
+		private Queue<QueuedTick> QueuedTicks { get; set; } = new();
 		private object VertexLock = new object();
 		private bool QueuedFullUpdate { get; set; }
 		private bool IsInitializing { get; set; }
@@ -159,6 +160,19 @@ namespace Facepunch.Voxels
 			}
 		}
 
+		[ServerVar( "cw_queued_tick_interval" )]
+		public static float QueuedTickInterval { get; set; } = 0.2f;
+		private TimeUntil TimeUntilNextQueuedTick;
+
+		public void QueueTick( IntVector3 position, BlockType block )
+		{
+			QueuedTicksSet.Add( new QueuedTick
+			{
+				Position = position,
+				BlockId = block.BlockId
+			} );
+		}
+
 		public void CreateBlockAtPosition( IntVector3 localPosition, byte blockId )
 		{
 			if ( !IsInside( localPosition ) ) return;
@@ -167,7 +181,22 @@ namespace Facepunch.Voxels
 			var block = World.GetBlockType( blockId );
 
 			SetBlock( localPosition, blockId );
-			block.OnBlockAdded( this, position.x, position.y, position.z, (int)BlockFace.Top );
+			block.OnBlockAdded( this, position, (int)BlockFace.Top );
+
+			for ( var i = 0; i < 5; i++ )
+			{
+				var neighbourPosition = position + BlockDirections[i];
+
+				if ( World.IsInBounds( neighbourPosition ) )
+				{
+					var neighbourId = World.GetBlock( neighbourPosition );
+					var neighbourBlock = World.GetBlockType( neighbourId );
+					var neighbourChunk = World.GetChunk( neighbourPosition );
+
+					if ( neighbourChunk.IsValid() )
+						neighbourBlock.OnNeighbourUpdated( neighbourChunk, neighbourPosition, position );
+				}
+			}
 
 			var entityName = IsServer ? block.ServerEntity : block.ClientEntity;
 
@@ -968,6 +997,28 @@ namespace Facepunch.Voxels
 			}
 
 			DirtyBlockStates.Clear();
+
+			if ( TimeUntilNextQueuedTick )
+			{
+				foreach ( var queued in QueuedTicksSet )
+				{
+					QueuedTicks.Enqueue( queued );
+				}
+
+				QueuedTicksSet.Clear();
+
+				while ( QueuedTicks.Count > 0 )
+				{
+					var queued = QueuedTicks.Dequeue();
+					var blockId = World.GetBlock( queued.Position );
+					if ( queued.BlockId != blockId ) continue;
+
+					var block = World.GetBlockType( queued.BlockId );
+					block.Tick( queued.Position );
+				}
+
+				TimeUntilNextQueuedTick = QueuedTickInterval;
+			}
 
 			if ( IsFullUpdateTaskRunning() ) return;
 

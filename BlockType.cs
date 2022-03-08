@@ -5,7 +5,7 @@ namespace Facepunch.Voxels
 {
 	public class BlockType
 	{
-		public VoxelWorld VoxelWorld { get; init; }
+		public VoxelWorld World { get; init; }
 		public byte BlockId { get; set; }
 
 		public virtual string DefaultTexture => "";
@@ -24,7 +24,7 @@ namespace Facepunch.Voxels
 		{
 			if ( string.IsNullOrEmpty( DefaultTexture ) ) return 0;
 
-			return VoxelWorld.BlockAtlas.GetTextureId( DefaultTexture );
+			return World.BlockAtlas.GetTextureId( DefaultTexture );
 		}
 
 		public virtual BlockState CreateState() => new BlockState();
@@ -34,12 +34,22 @@ namespace Facepunch.Voxels
 			return false;
 		}
 
-		public virtual void OnBlockAdded( Chunk chunk, int x, int y, int z, int direction )
+		public virtual void OnNeighbourUpdated( Chunk chunk, IntVector3 position, IntVector3 neighbourPosition )
+		{
+
+		}
+
+		public virtual void OnBlockAdded( Chunk chunk, IntVector3 position, int direction )
 		{
 			
 		}
 
-		public virtual void OnBlockRemoved( Chunk chunk, int x, int y, int z )
+		public virtual void OnBlockRemoved( Chunk chunk, IntVector3 position )
+		{
+
+		}
+
+		public virtual void Tick( IntVector3 position )
 		{
 
 		}
@@ -51,7 +61,7 @@ namespace Facepunch.Voxels
 
 		public BlockType()
 		{
-			VoxelWorld = VoxelWorld.Current;
+			World = VoxelWorld.Current;
 		}
 	}
 }
