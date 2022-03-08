@@ -54,9 +54,9 @@ namespace Facepunch.Voxels
 		public bool HasDoneFirstFullUpdate { get; set; }
 		public bool IsFullUpdateActive { get; set; }
 		public ChunkGenerator Generator { get; set; }
-		public bool QueueRebuild { get; set; }
 		public bool HasOnlyAirBlocks { get; set; }
 		public bool IsModelCreated { get; private set; }
+		public bool NeedsMeshCollisionRebuild { get; private set; }
 		public bool HasGenerated { get; private set; }
 		public bool Initialized { get; private set; }
 		public Vector3 Bounds { get; private set; }
@@ -86,6 +86,8 @@ namespace Facepunch.Voxels
 
 		private ConcurrentQueue<PhysicsShape> ShapesToDelete { get; set; } = new();
 		private Dictionary<int, BlockEntity> Entities { get; set; }
+		private List<Vector3> CollisionVertices { get; set; } = new();
+		private List<int> CollisionIndices{ get; set; } = new();
 		private List<QueuedTick> QueuedTicks { get; set; } = new();
 		private Queue<QueuedTick> TicksToRun { get; set; } = new();
 		private object VertexLock = new object();
@@ -260,8 +262,8 @@ namespace Facepunch.Voxels
 
 				await GameTask.RunInThreadAsync( StartFullUpdateTask );
 
+				NeedsMeshCollisionRebuild = true;
 				IsFullUpdateActive = false;
-				QueueRebuild = true;
 			}
 			catch ( TaskCanceledException )
 			{
@@ -300,15 +302,10 @@ namespace Facepunch.Voxels
 			LightMap.UpdateTorchLight();
 			LightMap.UpdateSunLight();
 
-			UpdateVerticesResult = StartUpdateVerticesTask();
+			UpdateVertices();
 
-			if ( World.BuildCollisionInThread )
-			{
-				BuildCollision();
-			}
-
+			NeedsMeshCollisionRebuild = true;
 			HasDoneFirstFullUpdate = true;
-			QueueRebuild = true;
 		}
 
 		public void PerformFullTorchUpdate()
@@ -429,14 +426,8 @@ namespace Facepunch.Voxels
 				IsModelCreated = true;
 			}
 
-			if ( !World.BuildCollisionInThread )
-			{
-				BuildCollision();
-			}
-
+			BuildCollision();
 			UpdateAdjacents( true );
-
-			QueueRebuild = false;
 		}
 
 		public void DeserializeBlockStates( BinaryReader reader )
@@ -745,24 +736,18 @@ namespace Facepunch.Voxels
 
 		public void BuildCollision()
 		{
-			lock ( VertexLock )
+			if ( !Body.IsValid() ) return;
+
+			var oldShape = Shape;
+
+			if ( CollisionVertices.Count > 0 && CollisionIndices.Count > 0 )
 			{
-				if ( !UpdateVerticesResult.IsValid ) return;
-				if ( !Body.IsValid() ) return;
+				Shape = Body.AddMeshShape( CollisionVertices, CollisionIndices );
+			}
 
-				var collisionVertices = UpdateVerticesResult.CollisionVertices;
-				var collisionIndices = UpdateVerticesResult.CollisionIndices;
-				var oldShape = Shape;
-
-				if ( collisionVertices.Length > 0 && collisionIndices.Length > 0 )
-				{
-					Shape = Body.AddMeshShape( collisionVertices, collisionIndices );
-				}
-
-				if ( oldShape.IsValid() )
-				{
-					ShapesToDelete.Enqueue( oldShape );
-				}
+			if ( oldShape.IsValid() )
+			{
+				ShapesToDelete.Enqueue( oldShape );
 			}
 		}
 
@@ -770,40 +755,35 @@ namespace Facepunch.Voxels
 		{
 			Host.AssertClient();
 
-			lock ( VertexLock )
+			try
 			{
-				if ( !UpdateVerticesResult.IsValid ) return;
-
-				try
+				for ( int i = 0; i < RenderLayers.Count; i++ )
 				{
-					for ( int i = 0; i < RenderLayers.Count; i++ )
+					var layer = RenderLayers[i];
+					if ( !layer.Mesh.IsValid ) continue;
+
+					var vertices = layer.Vertices;
+					var vertexCount = vertices.Count;
+
+					if ( layer.Mesh.HasVertexBuffer )
+						layer.Mesh.SetVertexBufferSize( vertexCount );
+					else
+						layer.Mesh.CreateVertexBuffer<BlockVertex>( Math.Max( 1, vertexCount ), BlockVertex.Layout );
+
+					vertexCount = 0;
+
+					if ( vertices.Count > 0 )
 					{
-						var layer = RenderLayers[i];
-						if ( !layer.Mesh.IsValid ) continue;
-
-						var vertices = UpdateVerticesResult.Vertices[i];
-						var vertexCount = vertices.Length;
-
-						if ( layer.Mesh.HasVertexBuffer )
-							layer.Mesh.SetVertexBufferSize( vertexCount );
-						else
-							layer.Mesh.CreateVertexBuffer<BlockVertex>( Math.Max( 1, vertexCount ), BlockVertex.Layout );
-
-						vertexCount = 0;
-
-						if ( vertices.Length > 0 )
-						{
-							layer.Mesh.SetVertexBufferData( new Span<BlockVertex>( vertices ), vertexCount );
-							vertexCount += vertices.Length;
-						}
-
-						layer.Mesh.SetVertexRange( 0, vertexCount );
+						layer.Mesh.SetVertexBufferData( vertices, vertexCount );
+						vertexCount += vertices.Count;
 					}
+
+					layer.Mesh.SetVertexRange( 0, vertexCount );
 				}
-				catch ( Exception e )
-				{
-					Log.Error( e );
-				}
+			}
+			catch ( Exception e )
+			{
+				Log.Error( e );
 			}
 		}
 
@@ -860,110 +840,89 @@ namespace Facepunch.Voxels
 			2, 2, 1, 1, 0, 0
 		};
 
-		public ChunkVertexData StartUpdateVerticesTask()
+		public void UpdateVertices()
 		{
-			var output = new ChunkVertexData
+			for ( var i = 0; i < RenderLayers.Count; i++ )
 			{
-				IsValid = false
-			};
+				var layer = RenderLayers[i];
+				layer.Vertices.Clear();
+			}
 
-			lock ( VertexLock )
+			CollisionVertices.Clear();
+			CollisionIndices.Clear();
+
+			var faceWidth = 1;
+			var faceHeight = 1;
+
+			for ( var x = 0; x < SizeX; x++ )
 			{
-				for ( var i = 0; i < RenderLayers.Count; i++ )
+				for ( var y = 0; y < SizeY; y++ )
 				{
-					var layer = RenderLayers[i];
-					layer.Vertices.Clear();
-				}
-
-				var collisionVertices = new List<Vector3>();
-				var collisionIndices = new List<int>();
-
-				var faceWidth = 1;
-				var faceHeight = 1;
-
-				for ( var x = 0; x < SizeX; x++ )
-				{
-					for ( var y = 0; y < SizeY; y++ )
+					for ( var z = 0; z < SizeZ; z++ )
 					{
-						for ( var z = 0; z < SizeZ; z++ )
+						// We need to check if the game is still running.
+						if ( !Game.Current.IsValid() ) break;
+
+						var position = new IntVector3( x, y, z );
+						var index = x * SizeY * SizeZ + y * SizeZ + z;
+						var blockId = Blocks[index];
+						if ( blockId == 0 ) continue;
+
+						var block = World.GetBlockType( blockId );
+
+						for ( int faceSide = 0; faceSide < 6; faceSide++ )
 						{
-							// We need to check if the game is still running.
-							if ( !Game.Current.IsValid() ) break;
+							var neighbourId = World.GetAdjacentBlock( Offset + position, faceSide );
+							var neighbourBlock = World.GetBlockType( neighbourId );
+							var collisionIndex = CollisionIndices.Count;
+							var textureId = block.GetTextureId( (BlockFace)faceSide, this, x, y, z );
+							var normal = (byte)faceSide;
+							var faceData = (uint)((textureId & 31) << 18 | (0 & 15) << 23 | (normal & 7) << 27);
+							var axis = BlockDirectionAxis[faceSide];
+							var uAxis = (axis + 1) % 3;
+							var vAxis = (axis + 2) % 3;
 
-							var position = new IntVector3( x, y, z );
-							var index = x * SizeY * SizeZ + y * SizeZ + z;
-							var blockId = Blocks[index];
-							if ( blockId == 0 ) continue;
+							var shouldGenerateVertices = IsClient && block.HasTexture && neighbourBlock.IsTranslucent && !block.ShouldCullFace( (BlockFace)faceSide, neighbourBlock );
+							var shouldGenerateCollision = !block.IsPassable && neighbourBlock.IsPassable;
 
-							var block = World.GetBlockType( blockId );
+							if ( !shouldGenerateCollision && !shouldGenerateVertices )
+								continue;
 
-							for ( int faceSide = 0; faceSide < 6; faceSide++ )
+							for ( int i = 0; i < 6; ++i )
 							{
-								var neighbourId = World.GetAdjacentBlock( Offset + position, faceSide );
-								var neighbourBlock = World.GetBlockType( neighbourId );
-								var collisionIndex = collisionIndices.Count;
-								var textureId = block.GetTextureId( (BlockFace)faceSide, this, x, y, z );
-								var normal = (byte)faceSide;
-								var faceData = (uint)((textureId & 31) << 18 | (0 & 15) << 23 | (normal & 7) << 27);
-								var axis = BlockDirectionAxis[faceSide];
-								var uAxis = (axis + 1) % 3;
-								var vAxis = (axis + 2) % 3;
+								var vi = BlockIndices[(faceSide * 6) + i];
+								var vOffset = BlockVertices[vi];
 
-								var shouldGenerateVertices = IsClient && block.HasTexture && neighbourBlock.IsTranslucent && !block.ShouldCullFace( (BlockFace)faceSide, neighbourBlock );
-								var shouldGenerateCollision = !block.IsPassable && neighbourBlock.IsPassable;
+								vOffset[uAxis] *= faceWidth;
+								vOffset[vAxis] *= faceHeight;
 
-								if ( !shouldGenerateCollision && !shouldGenerateVertices )
-									continue;
-
-								for ( int i = 0; i < 6; ++i )
+								if ( shouldGenerateVertices )
 								{
-									var vi = BlockIndices[(faceSide * 6) + i];
-									var vOffset = BlockVertices[vi];
+									var vertex = new BlockVertex( (uint)(x + vOffset.x), (uint)(y + vOffset.y), (uint)(z + vOffset.z), (uint)x, (uint)y, (uint)z, faceData );
 
-									vOffset[uAxis] *= faceWidth;
-									vOffset[vAxis] *= faceHeight;
-
-									if ( shouldGenerateVertices )
+									if ( block.IsTranslucent )
 									{
-										var vertex = new BlockVertex( (uint)(x + vOffset.x), (uint)(y + vOffset.y), (uint)(z + vOffset.z), (uint)x, (uint)y, (uint)z, faceData );
-
-										if ( block.IsTranslucent )
-										{ 
-											if ( block.UseTransparency )
-												TranslucentLayer.Vertices.Add( vertex );
-											else
-												AlphaTestLayer.Vertices.Add( vertex );
-										}
+										if ( block.UseTransparency )
+											TranslucentLayer.Vertices.Add( vertex );
 										else
-										{
-											OpaqueLayer.Vertices.Add( vertex );
-										}
+											AlphaTestLayer.Vertices.Add( vertex );
 									}
-
-									if ( shouldGenerateCollision )
+									else
 									{
-										collisionVertices.Add( new Vector3( (x + vOffset.x) + Offset.x, (y + vOffset.y) + Offset.y, (z + vOffset.z) + Offset.z ) * VoxelSize );
-										collisionIndices.Add( collisionIndex + i );
+										OpaqueLayer.Vertices.Add( vertex );
 									}
+								}
+
+								if ( shouldGenerateCollision )
+								{
+									CollisionVertices.Add( new Vector3( (x + vOffset.x) + Offset.x, (y + vOffset.y) + Offset.y, (z + vOffset.z) + Offset.z ) * VoxelSize );
+									CollisionIndices.Add( collisionIndex + i );
 								}
 							}
 						}
 					}
 				}
-
-				output.Vertices = new BlockVertex[RenderLayers.Count][];
-
-				for ( var i = 0; i < RenderLayers.Count; i++ )
-				{
-					output.Vertices[i] = RenderLayers[i].Vertices.ToArray();
-				}
-
-				output.CollisionVertices = collisionVertices.ToArray();
-				output.CollisionIndices = collisionIndices.ToArray();
-				output.IsValid = true;
 			}
-
-			return output;
 		}
 
 		[Event.Tick.Server]
@@ -1016,12 +975,10 @@ namespace Facepunch.Voxels
 				block.Tick( queued.Position );
 			}
 
-			if ( IsFullUpdateTaskRunning() ) return;
-
-			if ( !World.BuildCollisionInThread && QueueRebuild )
+			if ( NeedsMeshCollisionRebuild && !IsFullUpdateTaskRunning() )
 			{
+				NeedsMeshCollisionRebuild = false;
 				BuildCollision();
-				QueueRebuild = false;
 			}
 		}
 
@@ -1039,9 +996,13 @@ namespace Facepunch.Voxels
 
 			if ( IsFullUpdateTaskRunning() ) return;
 
-			if ( QueueRebuild && !AreAdjacentChunksUpdating() )
+			if ( !AreAdjacentChunksUpdating() )
 			{
-				BuildMeshAndCollision();
+				if ( NeedsMeshCollisionRebuild )
+				{
+					NeedsMeshCollisionRebuild = false;
+					BuildMeshAndCollision();
+				}
 
 				var viewer = Local.Client.GetChunkViewer();
 
@@ -1051,7 +1012,7 @@ namespace Facepunch.Voxels
 				}
 			}
 
-			if ( !QueueRebuild && HasDoneFirstFullUpdate )
+			if ( HasDoneFirstFullUpdate )
 			{
 				LightMap.UpdateTorchLight();
 				LightMap.UpdateSunLight();
@@ -1112,12 +1073,7 @@ namespace Facepunch.Voxels
 				LightMap.UpdateTorchLight();
 				LightMap.UpdateSunLight();
 
-				UpdateVerticesResult = StartUpdateVerticesTask();
-
-				if ( World.BuildCollisionInThread )
-				{
-					BuildCollision();
-				}
+				UpdateVertices();
 			}
 			catch ( Exception e )
 			{
