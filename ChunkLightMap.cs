@@ -11,7 +11,6 @@ namespace Facepunch.Voxels
 		public Texture Texture { get; private set; }
 		public Chunk Chunk { get; private set; }
 		public VoxelWorld VoxelWorld { get; private set; }
-		public bool IsDirty { get; set; }
 		public bool IsClient => Host.IsClient;
 		public bool IsServer => Host.IsServer;
 		public int ChunkSizeX;
@@ -92,7 +91,6 @@ namespace Facepunch.Voxels
 		public void Deserialize( BinaryReader reader )
 		{
 			Data = reader.ReadBytes( Data.Length );
-			IsDirty = true;
 		}
 
 		public int ToIndex( IntVector3 position, int component )
@@ -117,7 +115,7 @@ namespace Facepunch.Voxels
 			var index = ToIndex( position, 1 );
 			if ( !IsInBounds( index ) ) return false;
 			if ( GetSunLight( position ) == value ) return false;
-			IsDirty = true;
+			Chunk.QueueFullUpdate();
 			Data[index] = (byte)((Data[index] & 0x0F) | ((value & 0xf) << 4));
 			Data[ToIndex( position, 3 )] |= 0x40;
 			return true;
@@ -335,11 +333,10 @@ namespace Facepunch.Voxels
 			}
 		}
 
-		public bool UpdateTexture( bool forceUpdate = false )
+		public bool UpdateTexture()
 		{
-			if ( IsClient && ( IsDirty || forceUpdate ) )
+			if ( IsClient )
 			{
-				IsDirty = false;
 				Texture.Update( Data );
 				return true;
 			}
@@ -414,7 +411,7 @@ namespace Facepunch.Voxels
 			var index = ToIndex( position, 0 );
 			if ( !IsInBounds( index ) ) return false;
 			if ( GetRedTorchLight( position ) == value ) return false;
-			IsDirty = true;
+			Chunk.QueueFullUpdate();
 			Data[index] = (byte)((Data[index] & 0xF0) | (value & 0xF));
 			Data[ToIndex( position, 3 )] |= 0x40;
 			return true;
@@ -432,7 +429,7 @@ namespace Facepunch.Voxels
 			var index = ToIndex( position, 0 );
 			if ( !IsInBounds( index ) ) return false;
 			if ( GetGreenTorchLight( position ) == value ) return false;
-			IsDirty = true;
+			Chunk.QueueFullUpdate();
 			Data[index] = (byte)((Data[index] & 0x0F) | (value << 4));
 			Data[ToIndex( position, 3 )] |= 0x40;
 			return true;
@@ -450,7 +447,7 @@ namespace Facepunch.Voxels
 			var index = ToIndex( position, 1 );
 			if ( !IsInBounds( index ) ) return false;
 			if ( GetBlueTorchLight( position ) == value ) return false;
-			IsDirty = true;
+			Chunk.QueueFullUpdate();
 			Data[index] = (byte)((Data[index] & 0xF0) | (value & 0xF));
 			Data[ToIndex( position, 3 )] |= 0x40;
 			return true;
