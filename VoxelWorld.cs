@@ -966,17 +966,33 @@ namespace Facepunch.Voxels
 
 			if ( (blockId != 0 && currentBlockId == 0) || (blockId == 0 && currentBlockId != 0) )
 			{
-				var signal = new BlockChangeSignal
-				{
-					Position = localPosition,
-					OldBlockId = currentBlockId,
-					NewBlockId = blockId
-				};
-
-				chunk.BlockChangeSignals.Enqueue( signal );
-
 				var currentBlock = GetBlockType( currentBlockId );
 				var block = GetBlockType( blockId );
+
+				if ( block.LightLevel.Length > 0 )
+				{
+					if ( block.LightLevel.x > 0 )
+						AddRedTorchLight( position, (byte)block.LightLevel.x );
+					else
+						RemoveRedTorchLight( position );
+
+					if ( block.LightLevel.y > 0 )
+						AddGreenTorchLight( position, (byte)block.LightLevel.y );
+					else
+						RemoveGreenTorchLight( position );
+
+					if ( block.LightLevel.z > 0 )
+						AddBlueTorchLight( position, (byte)block.LightLevel.z );
+					else
+						RemoveBlueTorchLight( position );
+				}
+				else
+				{
+					RemoveBlueTorchLight( position );
+					RemoveRedTorchLight( position );
+					RemoveGreenTorchLight( position );
+					RemoveSunLight( position );
+				}
 
 				currentBlock.OnBlockRemoved( chunk, position );
 
@@ -985,7 +1001,7 @@ namespace Facepunch.Voxels
 
 				block.OnBlockAdded( chunk, position, direction );
 
-				var entityName = IsServer ? block.ServerEntity : block.ClientEntity;
+				var entityName = IsServer ? block.ServerEntity : block.ClientEntity;   
 
 				if ( !string.IsNullOrEmpty( entityName ) )
 				{

@@ -48,14 +48,12 @@ namespace Facepunch.Voxels
 			public bool IsValid;
 		}
 
-		public ConcurrentQueue<BlockChangeSignal> BlockChangeSignals { get; set; } = new();
 		public Dictionary<IntVector3, BlockState> BlockStates { get; set; } = new();
 		public ChunkVertexData UpdateVerticesResult { get; set; }
 		public HashSet<IntVector3> DirtyBlockStates { get; set; } = new();
 		public bool HasDoneFirstFullUpdate { get; set; }
 		public bool IsFullUpdateActive { get; set; }
 		public ChunkGenerator Generator { get; set; }
-		public bool QueueMeshUpdate { get; set; }
 		public bool HasOnlyAirBlocks { get; set; }
 		public bool IsModelCreated { get; private set; }
 		public bool HasGenerated { get; private set; }
@@ -259,24 +257,19 @@ namespace Facepunch.Voxels
 				IsFullUpdateActive = true;
 				QueuedFullUpdate = false;
 
+				LightMap.UpdateTorchLight();
+				LightMap.UpdateSunLight();
+
 				await GameTask.RunInThreadAsync( StartFullUpdateTask );
 
 				if ( IsClient )
 				{
 					RunQueuedMeshUpdate();
-					LightMap.UpdateTexture();
 				}
 
-				/*
-				if ( IsClient && !QueuedFullUpdate )
-				{
-					
-					LightMap.UpdateTexture();
-				}
-				*/
+				LightMap.UpdateTexture();
 
 				IsFullUpdateActive = false;
-				QueueMeshUpdate = true;
 			}
 			catch ( TaskCanceledException )
 			{
@@ -322,7 +315,6 @@ namespace Facepunch.Voxels
 			}
 
 			HasDoneFirstFullUpdate = true;
-			QueueMeshUpdate = true;
 		}
 
 		public void PerformFullTorchUpdate()
@@ -444,8 +436,6 @@ namespace Facepunch.Voxels
 			}
 
 			UpdateAdjacents( true );
-
-			QueueMeshUpdate = false;
 		}
 
 		public void DeserializeBlockStates( BinaryReader reader )
@@ -1044,6 +1034,13 @@ namespace Facepunch.Voxels
 			{
 				viewer.AddLoadedChunk( Offset );
 			}
+
+			if ( HasDoneFirstFullUpdate && !IsFullUpdateActive )
+			{
+				LightMap.UpdateTorchLight();
+				LightMap.UpdateSunLight();
+				LightMap.UpdateTexture();
+			}
 		}
 
 		[Event.Tick]
@@ -1090,46 +1087,7 @@ namespace Facepunch.Voxels
 		{
 			try
 			{
-				while ( BlockChangeSignals.Count > 0 )
-				{
-					if ( !BlockChangeSignals.TryDequeue( out var signal ) )
-						continue;
-
-					var currentBlock = World.GetBlockType( signal.OldBlockId );
-					var position = signal.Position;
-					var block = World.GetBlockType( signal.NewBlockId );
-
-					if ( block.LightLevel.Length > 0 )
-					{
-						if ( block.LightLevel.x > 0 )
-							LightMap.AddRedTorchLight( position, (byte)block.LightLevel.x );
-						else
-							LightMap.RemoveRedTorchLight( position );
-
-						if ( block.LightLevel.y > 0 )
-							LightMap.AddGreenTorchLight( position, (byte)block.LightLevel.y );
-						else
-							LightMap.RemoveGreenTorchLight( position );
-
-						if ( block.LightLevel.z > 0 )
-							LightMap.AddBlueTorchLight( position, (byte)block.LightLevel.z );
-						else
-							LightMap.RemoveBlueTorchLight( position );
-					}
-					else
-					{
-						LightMap.RemoveBlueTorchLight( position );
-						LightMap.RemoveRedTorchLight( position );
-						LightMap.RemoveGreenTorchLight( position );
-						LightMap.RemoveSunLight( position );
-					}
-				}
-
-				LightMap.UpdateTorchLight();
-				LightMap.UpdateSunLight();
-
 				UpdateVerticesResult = StartUpdateVerticesTask();
-
 				BuildCollision();
 			}
 			catch ( Exception e )

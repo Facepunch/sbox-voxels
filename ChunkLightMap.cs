@@ -96,7 +96,6 @@ namespace Facepunch.Voxels
 			var index = ToIndex( position, 1 );
 			if ( !IsInBounds( index ) ) return false;
 			if ( GetSunLight( position ) == value ) return false;
-			Chunk.QueueFullUpdate();
 			IsDirty = true;
 			Data[index] = (byte)((Data[index] & 0x0F) | ((value & 0xf) << 4));
 			Data[ToIndex( position, 3 )] |= 0x40;
@@ -257,6 +256,7 @@ namespace Facepunch.Voxels
 
 		public void UpdateTorchLight( int channel )
 		{
+			var affectedNeighbours = new HashSet<Chunk>();
 			var removeQueue = TorchLightRemoveQueue[channel];
 			var addQueue = TorchLightAddQueue[channel];
 
@@ -274,6 +274,10 @@ namespace Facepunch.Voxels
 					{
 						VoxelWorld.SetTorchLight( neighbourPosition, channel, 0 );
 
+						var chunk = VoxelWorld.GetChunk( neighbourPosition );
+						if ( chunk.IsValid() && chunk != Chunk )
+							affectedNeighbours.Add( chunk );
+
 						removeQueue.Enqueue( new LightRemoveNode
 						{
 							Position = neighbourPosition,
@@ -282,6 +286,10 @@ namespace Facepunch.Voxels
 					}
 					else if ( lightLevel >= node.Value )
 					{
+						var chunk = VoxelWorld.GetChunk( neighbourPosition );
+						if ( chunk.IsValid() && chunk != Chunk )
+							affectedNeighbours.Add( chunk );
+
 						addQueue.Enqueue( new LightAddNode
 						{
 							Position = neighbourPosition,
@@ -297,6 +305,11 @@ namespace Facepunch.Voxels
 					continue;
 
 				var lightLevel = VoxelWorld.GetTorchLight( node.Position, channel );
+				var blockId = VoxelWorld.GetBlock( node.Position );
+				var block = VoxelWorld.GetBlockType( blockId );
+
+				if ( !block.IsTranslucent )
+					continue;
 
 				for ( var i = 0; i < 6; i++ )
 				{
@@ -309,15 +322,24 @@ namespace Facepunch.Voxels
 						if ( neighbourBlock.IsTranslucent )
 						{
 							VoxelWorld.AddTorchLight( neighbourPosition, channel, (byte)((lightLevel - 1) * neighbourBlock.LightFilter[channel]) );
+
+							var chunk = VoxelWorld.GetChunk( neighbourPosition );
+							if ( chunk.IsValid() && chunk != Chunk )
+								affectedNeighbours.Add( chunk );
 						}
 					}
 				}
 			}
+
+			foreach ( var neighbour in affectedNeighbours )
+			{
+				neighbour.LightMap.UpdateTorchLight( channel );
+			}
 		}
 
-		public bool UpdateTexture( )
+		public bool UpdateTexture( bool forceUpdate = false )
 		{
-			if ( IsClient && IsDirty )
+			if ( IsClient && ( IsDirty || forceUpdate ) )
 			{
 				Texture.Update( Data );
 				IsDirty = false;
@@ -394,7 +416,6 @@ namespace Facepunch.Voxels
 			var index = ToIndex( position, 0 );
 			if ( !IsInBounds( index ) ) return false;
 			if ( GetRedTorchLight( position ) == value ) return false;
-			Chunk.QueueFullUpdate();
 			IsDirty = true;
 			Data[index] = (byte)((Data[index] & 0xF0) | (value & 0xF));
 			Data[ToIndex( position, 3 )] |= 0x40;
@@ -413,7 +434,6 @@ namespace Facepunch.Voxels
 			var index = ToIndex( position, 0 );
 			if ( !IsInBounds( index ) ) return false;
 			if ( GetGreenTorchLight( position ) == value ) return false;
-			Chunk.QueueFullUpdate();
 			IsDirty = true;
 			Data[index] = (byte)((Data[index] & 0x0F) | (value << 4));
 			Data[ToIndex( position, 3 )] |= 0x40;
@@ -432,7 +452,6 @@ namespace Facepunch.Voxels
 			var index = ToIndex( position, 1 );
 			if ( !IsInBounds( index ) ) return false;
 			if ( GetBlueTorchLight( position ) == value ) return false;
-			Chunk.QueueFullUpdate();
 			IsDirty = true;
 			Data[index] = (byte)((Data[index] & 0xF0) | (value & 0xF));
 			Data[ToIndex( position, 3 )] |= 0x40;
