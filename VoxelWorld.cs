@@ -611,10 +611,9 @@ namespace Facepunch.Voxels
 		}
 
 		[ClientRpc]
-		public static async void ReceiveChunks( byte[] data )
+		public static void ReceiveChunks( byte[] data )
 		{
 			var decompressed = CompressionHelper.Decompress( data );
-			var viewer = Local.Client.GetChunkViewer();
 
 			using ( var stream = new MemoryStream( decompressed ) )
 			{
@@ -638,11 +637,6 @@ namespace Facepunch.Voxels
 						chunk.DeserializeBlockStates( reader );
 
 						_ = chunk.Initialize();
-
-						if ( i % 32 == 0 )
-						{
-							await GameTask.Delay( 5 );
-						}
 					}
 				}
 			}
@@ -972,39 +966,17 @@ namespace Facepunch.Voxels
 
 			if ( (blockId != 0 && currentBlockId == 0) || (blockId == 0 && currentBlockId != 0) )
 			{
+				var signal = new BlockChangeSignal
+				{
+					Position = localPosition,
+					OldBlockId = currentBlockId,
+					NewBlockId = blockId
+				};
+
+				chunk.BlockChangeSignals.Enqueue( signal );
+
 				var currentBlock = GetBlockType( currentBlockId );
 				var block = GetBlockType( blockId );
-
-				if ( block.LightLevel.Length > 0 )
-				{
-					if ( block.LightLevel.x > 0 )
-						AddRedTorchLight( position, (byte)block.LightLevel.x );
-					else
-						RemoveRedTorchLight( position );
-
-					if ( block.LightLevel.y > 0 )
-						AddGreenTorchLight( position, (byte)block.LightLevel.y );
-					else
-						RemoveGreenTorchLight( position );
-
-					if ( block.LightLevel.z > 0 )
-						AddBlueTorchLight( position, (byte)block.LightLevel.z );
-					else
-						RemoveBlueTorchLight( position );
-				}
-				else
-				{
-					if ( currentBlock.LightLevel.x > 0 )
-						RemoveRedTorchLight( position );
-
-					if ( currentBlock.LightLevel.y > 0 )
-						RemoveGreenTorchLight( position );
-
-					if ( currentBlock.LightLevel.z > 0 )
-						RemoveBlueTorchLight( position );
-
-					RemoveSunLight( position );
-				}
 
 				currentBlock.OnBlockRemoved( chunk, position );
 

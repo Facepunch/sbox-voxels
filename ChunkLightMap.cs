@@ -10,6 +10,7 @@ namespace Facepunch.Voxels
 	{
 		public Texture Texture { get; private set; }
 		public Chunk Chunk { get; private set; }
+		public bool IsDirty { get; private set; }
 		public VoxelWorld VoxelWorld { get; private set; }
 		public bool IsClient => Host.IsClient;
 		public bool IsServer => Host.IsServer;
@@ -42,7 +43,7 @@ namespace Facepunch.Voxels
 			ChunkSizeZ = chunk.SizeZ;
 			Chunk = chunk;
 			VoxelWorld = world;
-
+			IsDirty = true;
 			Data = new byte[ChunkSizeX * ChunkSizeY * ChunkSizeZ * 4];
 
 			if ( IsClient )
@@ -61,26 +62,6 @@ namespace Facepunch.Voxels
 				Texture.Dispose();
 				Texture = null;
 			}
-		}
-
-		public bool HasQueuedItems()
-		{
-			for ( var i = 0; i < 3; i++ )
-			{
-				if ( !TorchLightRemoveQueue[i].IsEmpty )
-					return true;
-
-				if ( !TorchLightAddQueue[i].IsEmpty )
-					return true;
-			}
-
-			if ( !SunLightAddQueue.IsEmpty )
-				return true;
-
-			if ( !SunLightRemoveQueue.IsEmpty )
-				return true;
-
-			return false;
 		}
 
 		public void Serialize( BinaryWriter writer )
@@ -116,6 +97,7 @@ namespace Facepunch.Voxels
 			if ( !IsInBounds( index ) ) return false;
 			if ( GetSunLight( position ) == value ) return false;
 			Chunk.QueueFullUpdate();
+			IsDirty = true;
 			Data[index] = (byte)((Data[index] & 0x0F) | ((value & 0xf) << 4));
 			Data[ToIndex( position, 3 )] |= 0x40;
 			return true;
@@ -333,11 +315,12 @@ namespace Facepunch.Voxels
 			}
 		}
 
-		public bool UpdateTexture()
+		public bool UpdateTexture( )
 		{
-			if ( IsClient )
+			if ( IsClient && IsDirty )
 			{
 				Texture.Update( Data );
+				IsDirty = false;
 				return true;
 			}
 
@@ -412,6 +395,7 @@ namespace Facepunch.Voxels
 			if ( !IsInBounds( index ) ) return false;
 			if ( GetRedTorchLight( position ) == value ) return false;
 			Chunk.QueueFullUpdate();
+			IsDirty = true;
 			Data[index] = (byte)((Data[index] & 0xF0) | (value & 0xF));
 			Data[ToIndex( position, 3 )] |= 0x40;
 			return true;
@@ -430,6 +414,7 @@ namespace Facepunch.Voxels
 			if ( !IsInBounds( index ) ) return false;
 			if ( GetGreenTorchLight( position ) == value ) return false;
 			Chunk.QueueFullUpdate();
+			IsDirty = true;
 			Data[index] = (byte)((Data[index] & 0x0F) | (value << 4));
 			Data[ToIndex( position, 3 )] |= 0x40;
 			return true;
@@ -448,6 +433,7 @@ namespace Facepunch.Voxels
 			if ( !IsInBounds( index ) ) return false;
 			if ( GetBlueTorchLight( position ) == value ) return false;
 			Chunk.QueueFullUpdate();
+			IsDirty = true;
 			Data[index] = (byte)((Data[index] & 0xF0) | (value & 0xF));
 			Data[ToIndex( position, 3 )] |= 0x40;
 			return true;
