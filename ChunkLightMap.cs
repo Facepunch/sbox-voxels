@@ -11,6 +11,7 @@ namespace Facepunch.Voxels
 		public Texture Texture { get; private set; }
 		public Chunk Chunk { get; private set; }
 		public VoxelWorld VoxelWorld { get; private set; }
+		public bool IsDirty { get; set; }
 		public bool IsClient => Host.IsClient;
 		public bool IsServer => Host.IsServer;
 		public int ChunkSizeX;
@@ -22,8 +23,6 @@ namespace Facepunch.Voxels
 		public ConcurrentQueue<LightAddNode>[] TorchLightAddQueue { get; private set; }
 		public ConcurrentQueue<LightRemoveNode> SunLightRemoveQueue { get; private set; }
 		public ConcurrentQueue<IntVector3> SunLightAddQueue { get; private set; }
-
-		private bool IsDirty { get; set; }
 
 		public ChunkLightMap( Chunk chunk, VoxelWorld world )
 		{
@@ -63,6 +62,26 @@ namespace Facepunch.Voxels
 				Texture.Dispose();
 				Texture = null;
 			}
+		}
+
+		public bool HasQueuedItems()
+		{
+			for ( var i = 0; i < 3; i++ )
+			{
+				if ( !TorchLightRemoveQueue[i].IsEmpty )
+					return true;
+
+				if ( !TorchLightAddQueue[i].IsEmpty )
+					return true;
+			}
+
+			if ( !SunLightAddQueue.IsEmpty )
+				return true;
+
+			if ( !SunLightRemoveQueue.IsEmpty )
+				return true;
+
+			return false;
 		}
 
 		public void Serialize( BinaryWriter writer )
@@ -316,9 +335,9 @@ namespace Facepunch.Voxels
 			}
 		}
 
-		public bool UpdateTexture()
+		public bool UpdateTexture( bool forceUpdate = false )
 		{
-			if ( IsDirty )
+			if ( IsClient && ( IsDirty || forceUpdate ) )
 			{
 				IsDirty = false;
 				Texture.Update( Data );

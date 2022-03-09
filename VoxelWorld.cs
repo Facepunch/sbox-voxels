@@ -54,7 +54,6 @@ namespace Facepunch.Voxels
 					var chunkRenderDistance = reader.ReadInt32();
 					var chunkUnloadDistance = reader.ReadInt32();
 					var minimumLoadedChunks = reader.ReadInt32();
-					var buildCollisionInThread = reader.ReadBoolean();
 					var opaqueMaterial = reader.ReadString();
 					var translucentMaterial = reader.ReadString();
 
@@ -67,7 +66,6 @@ namespace Facepunch.Voxels
 						ChunkRenderDistance = chunkRenderDistance,
 						ChunkUnloadDistance = chunkUnloadDistance,
 						MinimumLoadedChunks = minimumLoadedChunks,
-						BuildCollisionInThread = buildCollisionInThread,
 						OpaqueMaterial = opaqueMaterial,
 						TranslucentMaterial = translucentMaterial
 					};
@@ -232,7 +230,6 @@ namespace Facepunch.Voxels
 
 		public BlockAtlas BlockAtlas { get; private set; }
 		public IntVector3 MaxSize { get; private set; }
-		public bool BuildCollisionInThread { get; private set; }
 		public string OpaqueMaterial { get; private set; }
 		public string TranslucentMaterial { get; private set; }
 		public int MinimumLoadedChunks { get; private set; }
@@ -471,7 +468,6 @@ namespace Facepunch.Voxels
 					writer.Write( ChunkRenderDistance );
 					writer.Write( ChunkUnloadDistance );
 					writer.Write( MinimumLoadedChunks );
-					writer.Write( BuildCollisionInThread );
 					writer.Write( OpaqueMaterial );
 					writer.Write( TranslucentMaterial );
 					writer.Write( BlockAtlasFileName );
@@ -528,11 +524,6 @@ namespace Facepunch.Voxels
 		{
 			OpaqueMaterial = opaqueMaterialName;
 			TranslucentMaterial = translucentMaterialName;
-		}
-
-		public void SetBuildCollisionInThread( bool value )
-		{
-			BuildCollisionInThread = value;
 		}
 
 		public bool SetBlockInDirection( Vector3 origin, Vector3 direction, byte blockId, bool checkSourceCollision = false )
@@ -981,21 +972,40 @@ namespace Facepunch.Voxels
 
 			if ( (blockId != 0 && currentBlockId == 0) || (blockId == 0 && currentBlockId != 0) )
 			{
+				var currentBlock = GetBlockType( currentBlockId );
 				var block = GetBlockType( blockId );
 
-				RemoveRedTorchLight( position );
-				RemoveGreenTorchLight( position );
-				RemoveBlueTorchLight( position );
-				RemoveSunLight( position );
-
-				if ( block.LightLevel.x > 0 || block.LightLevel.y > 0 || block.LightLevel.z > 0 )
+				if ( block.LightLevel.Length > 0 )
 				{
-					AddRedTorchLight( position, (byte)block.LightLevel.x );
-					AddGreenTorchLight( position, (byte)block.LightLevel.y );
-					AddBlueTorchLight( position, (byte)block.LightLevel.z );
+					if ( block.LightLevel.x > 0 )
+						AddRedTorchLight( position, (byte)block.LightLevel.x );
+					else
+						RemoveRedTorchLight( position );
+
+					if ( block.LightLevel.y > 0 )
+						AddGreenTorchLight( position, (byte)block.LightLevel.y );
+					else
+						RemoveGreenTorchLight( position );
+
+					if ( block.LightLevel.z > 0 )
+						AddBlueTorchLight( position, (byte)block.LightLevel.z );
+					else
+						RemoveBlueTorchLight( position );
+				}
+				else
+				{
+					if ( currentBlock.LightLevel.x > 0 )
+						RemoveRedTorchLight( position );
+
+					if ( currentBlock.LightLevel.y > 0 )
+						RemoveGreenTorchLight( position );
+
+					if ( currentBlock.LightLevel.z > 0 )
+						RemoveBlueTorchLight( position );
+
+					RemoveSunLight( position );
 				}
 
-				var currentBlock = GetBlockType( currentBlockId );
 				currentBlock.OnBlockRemoved( chunk, position );
 
 				chunk.BlockStates.Remove( localPosition );

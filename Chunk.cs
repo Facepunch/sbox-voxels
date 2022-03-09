@@ -54,7 +54,7 @@ namespace Facepunch.Voxels
 		public bool HasDoneFirstFullUpdate { get; set; }
 		public bool IsFullUpdateActive { get; set; }
 		public ChunkGenerator Generator { get; set; }
-		public bool QueueRebuild { get; set; }
+		public bool QueueMeshUpdate { get; set; }
 		public bool HasOnlyAirBlocks { get; set; }
 		public bool IsModelCreated { get; private set; }
 		public bool HasGenerated { get; private set; }
@@ -261,7 +261,7 @@ namespace Facepunch.Voxels
 				await GameTask.RunInThreadAsync( StartFullUpdateTask );
 
 				IsFullUpdateActive = false;
-				QueueRebuild = true;
+				QueueMeshUpdate = true;
 			}
 			catch ( TaskCanceledException )
 			{
@@ -302,13 +302,10 @@ namespace Facepunch.Voxels
 
 			UpdateVerticesResult = StartUpdateVerticesTask();
 
-			if ( World.BuildCollisionInThread )
-			{
-				BuildCollision();
-			}
+			BuildCollision();
 
 			HasDoneFirstFullUpdate = true;
-			QueueRebuild = true;
+			QueueMeshUpdate = true;
 		}
 
 		public void PerformFullTorchUpdate()
@@ -415,7 +412,7 @@ namespace Facepunch.Voxels
 			}
 		}
 
-		public void BuildMeshAndCollision()
+		public void RunQueuedMeshUpdate()
 		{
 			BuildMesh();
 
@@ -429,14 +426,9 @@ namespace Facepunch.Voxels
 				IsModelCreated = true;
 			}
 
-			if ( !World.BuildCollisionInThread )
-			{
-				BuildCollision();
-			}
-
 			UpdateAdjacents( true );
 
-			QueueRebuild = false;
+			QueueMeshUpdate = false;
 		}
 
 		public void DeserializeBlockStates( BinaryReader reader )
@@ -1015,14 +1007,6 @@ namespace Facepunch.Voxels
 				var block = World.GetBlockType( queued.BlockId );
 				block.Tick( queued.Position );
 			}
-
-			if ( IsFullUpdateTaskRunning() ) return;
-
-			if ( !World.BuildCollisionInThread && QueueRebuild )
-			{
-				BuildCollision();
-				QueueRebuild = false;
-			}
 		}
 
 		[Event.Tick.Client]
@@ -1039,9 +1023,9 @@ namespace Facepunch.Voxels
 
 			if ( IsFullUpdateTaskRunning() ) return;
 
-			if ( QueueRebuild && !AreAdjacentChunksUpdating() )
+			if ( QueueMeshUpdate && !AreAdjacentChunksUpdating() )
 			{
-				BuildMeshAndCollision();
+				RunQueuedMeshUpdate();
 
 				var viewer = Local.Client.GetChunkViewer();
 
@@ -1051,16 +1035,13 @@ namespace Facepunch.Voxels
 				}
 			}
 
-			if ( !QueueRebuild && HasDoneFirstFullUpdate )
+			if ( LightMap.HasQueuedItems() )
 			{
-				LightMap.UpdateTorchLight();
-				LightMap.UpdateSunLight();
-
-				if ( LightMap.UpdateTexture() )
-				{
-					QueueFullUpdate();
-				}
+				QueueFullUpdate();
+				return;
 			}
+
+			LightMap.UpdateTexture();
 		}
 
 		[Event.Tick]
@@ -1114,10 +1095,7 @@ namespace Facepunch.Voxels
 
 				UpdateVerticesResult = StartUpdateVerticesTask();
 
-				if ( World.BuildCollisionInThread )
-				{
-					BuildCollision();
-				}
+				BuildCollision();
 			}
 			catch ( Exception e )
 			{
