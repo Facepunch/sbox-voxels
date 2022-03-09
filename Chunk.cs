@@ -258,6 +258,9 @@ namespace Facepunch.Voxels
 				IsFullUpdateActive = true;
 				QueuedFullUpdate = false;
 
+				LightMap.UpdateTorchLight();
+				LightMap.UpdateSunLight();
+
 				await GameTask.RunInThreadAsync( StartFullUpdateTask );
 
 				IsFullUpdateActive = false;
@@ -297,9 +300,6 @@ namespace Facepunch.Voxels
 
 		public void StartFirstFullUpdateTask()
 		{
-			LightMap.UpdateTorchLight();
-			LightMap.UpdateSunLight();
-
 			UpdateVerticesResult = StartUpdateVerticesTask();
 
 			BuildCollision();
@@ -320,7 +320,7 @@ namespace Facepunch.Voxels
 						var blockIndex = GetLocalPositionIndex( position );
 						var block = World.GetBlockType( Blocks[blockIndex] );
 
-						if ( block.LightLevel.x > 0 || block.LightLevel.y > 0 || block.LightLevel.z > 0 )
+						if ( block.LightLevel.Length > 0 )
 						{
 							LightMap.AddRedTorchLight( position, (byte)block.LightLevel.x );
 							LightMap.AddGreenTorchLight( position, (byte)block.LightLevel.y );
@@ -1023,7 +1023,7 @@ namespace Facepunch.Voxels
 
 			if ( IsFullUpdateTaskRunning() ) return;
 
-			if ( QueueMeshUpdate && !AreAdjacentChunksUpdating() )
+			if ( QueueMeshUpdate )
 			{
 				RunQueuedMeshUpdate();
 
@@ -1033,15 +1033,11 @@ namespace Facepunch.Voxels
 				{
 					viewer.AddLoadedChunk( Offset );
 				}
-			}
 
-			if ( LightMap.HasQueuedItems() )
-			{
-				QueueFullUpdate();
-				return;
+				LightMap.UpdateTorchLight();
+				LightMap.UpdateSunLight();
+				LightMap.UpdateTexture();
 			}
-
-			LightMap.UpdateTexture();
 		}
 
 		[Event.Tick]
@@ -1066,7 +1062,7 @@ namespace Facepunch.Voxels
 			}
 		}
 
-		private async Task StartThreadedInitializeTask()
+		private void StartThreadedInitializeTask()
 		{
 			if ( IsServer )
 			{
@@ -1077,8 +1073,6 @@ namespace Facepunch.Voxels
 
 			LightMap.UpdateTorchLight();
 			LightMap.UpdateSunLight();
-
-			await GameTask.Delay( 1 );
 		}
 
 		private bool AreAdjacentChunksUpdating()
@@ -1090,11 +1084,7 @@ namespace Facepunch.Voxels
 		{
 			try
 			{
-				LightMap.UpdateTorchLight();
-				LightMap.UpdateSunLight();
-
 				UpdateVerticesResult = StartUpdateVerticesTask();
-
 				BuildCollision();
 			}
 			catch ( Exception e )
