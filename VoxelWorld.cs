@@ -250,6 +250,7 @@ namespace Facepunch.Voxels
 		public FastNoiseLite CaveNoise;
 
 		private ConcurrentQueue<Chunk>[] ChunkInitialUpdateQueues = new ConcurrentQueue<Chunk>[1];
+		private ConcurrentQueue<Chunk> ChunkFullUpdateQueue = new ConcurrentQueue<Chunk>();
 
 		private string BlockAtlasFileName { get; set; }
 		private byte NextAvailableBlockId { get; set; }
@@ -332,6 +333,14 @@ namespace Facepunch.Voxels
 			if ( chunk.IsValid() )
 			{
 				chunk.QueueTick( position, block, delay );
+			}
+		}
+
+		public void AddToFullUpdateList( Chunk chunk )
+		{
+			if ( !ChunkFullUpdateQueue.Contains( chunk ) )
+			{
+				ChunkFullUpdateQueue.Enqueue( chunk );
 			}
 		}
 
@@ -889,8 +898,10 @@ namespace Facepunch.Voxels
 			for ( var i = 0; i < ChunkInitialUpdateQueues.Length; i++ )
 			{
 				var index = i;
-				_ = GameTask.RunInThreadAsync( () => ChunkFullUpdateTask( index ) );
+				GameTask.RunInThreadAsync( () => ChunkFullUpdateTask( index ) );
 			}
+
+			GameTask.RunInThreadAsync( ChunkLightingUpdateTask );
 		}
 
 		public bool SetBlockAndUpdate( IntVector3 position, byte blockId, int direction, bool forceUpdate = false )
@@ -1225,6 +1236,34 @@ namespace Facepunch.Voxels
 				if ( client.Components.TryGet<ChunkViewer>( out var viewer ) )
 				{
 					viewer.Update();
+				}
+			}
+		}
+
+		private void ChunkLightingUpdateTask()
+		{
+			while ( true )
+			{
+				try
+				{
+					if ( !Game.Current.IsValid() ) break;
+
+					while ( ChunkFullUpdateQueue.Count > 0 )
+					{
+						if ( ChunkFullUpdateQueue.TryDequeue( out var chunk ) )
+						{
+							chunk.FullUpdate();
+						}
+					}
+				}
+				catch ( TaskCanceledException )
+				{
+					break;
+				}
+				catch ( Exception e )
+				{
+					Log.Error( e );
+					break;
 				}
 			}
 		}

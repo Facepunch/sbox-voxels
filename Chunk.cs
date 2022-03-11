@@ -51,8 +51,8 @@ namespace Facepunch.Voxels
 		public Dictionary<IntVector3, BlockState> BlockStates { get; set; } = new();
 		public ChunkVertexData UpdateVerticesResult { get; set; }
 		public HashSet<IntVector3> DirtyBlockStates { get; set; } = new();
+		public bool IsQueuedForFullUpdate { get; set; }
 		public bool HasDoneFirstFullUpdate { get; set; }
-		public bool IsFullUpdateActive { get; set; }
 		public ChunkGenerator Generator { get; set; }
 		public bool HasOnlyAirBlocks { get; set; }
 		public bool IsModelCreated { get; private set; }
@@ -87,8 +87,8 @@ namespace Facepunch.Voxels
 		private Dictionary<int, BlockEntity> Entities { get; set; }
 		private List<QueuedTick> QueuedTicks { get; set; } = new();
 		private Queue<QueuedTick> TicksToRun { get; set; } = new();
+		private bool IsWaitingForLightingUpdate { get; set; }
 		private object VertexLock = new object();
-		private bool QueuedFullUpdate { get; set; }
 		private bool IsInitializing { get; set; }
 
 		public bool IsValid => Body.IsValid();
@@ -244,37 +244,26 @@ namespace Facepunch.Voxels
 		public void QueueFullUpdate()
 		{
 			if ( !HasDoneFirstFullUpdate ) return;
-			QueuedFullUpdate = true;
+			World.AddToFullUpdateList( this );
+			IsQueuedForFullUpdate = true;
 		}
 
-		public async void FullUpdate()
+		public void FullUpdate()
 		{
-			if ( !IsValid || IsFullUpdateActive )
-				return;
+			LightMap.UpdateTorchLight();
+			LightMap.UpdateSunLight();
 
-			try
+			UpdateVerticesResult = StartUpdateVerticesTask();
+			BuildCollision();
+
+			if ( IsClient )
 			{
-				IsFullUpdateActive = true;
-				QueuedFullUpdate = false;
-
-				LightMap.UpdateTorchLight();
-				LightMap.UpdateSunLight();
-
-				await GameTask.RunInThreadAsync( StartFullUpdateTask );
-
-				if ( IsClient )
-				{
-					RunQueuedMeshUpdate();
-				}
-
-				LightMap.UpdateTexture();
-
-				IsFullUpdateActive = false;
+				RunQueuedMeshUpdate();
 			}
-			catch ( TaskCanceledException )
-			{
 
-			}
+			LightMap.UpdateTexture();
+
+			IsQueuedForFullUpdate = false;
 		}
 
 		public Voxel GetVoxel( IntVector3 position )
@@ -732,6 +721,16 @@ namespace Facepunch.Voxels
 			Entities.Add( index, entity );
 		}
 
+		public void StartWaitingOnLightingUpdate()
+		{
+			IsWaitingForLightingUpdate = true;
+		}
+
+		public void StopWaitingOnLightingUpdate()
+		{
+			IsWaitingForLightingUpdate = false;
+		}
+
 		public void RemoveEntity( IntVector3 position )
 		{
 			var index = GetLocalPositionIndex( position );
@@ -1034,24 +1033,17 @@ namespace Facepunch.Voxels
 			{
 				viewer.AddLoadedChunk( Offset );
 			}
-
-			if ( HasDoneFirstFullUpdate && !IsFullUpdateActive )
-			{
-				LightMap.UpdateTorchLight();
-				LightMap.UpdateSunLight();
-				LightMap.UpdateTexture();
-			}
 		}
 
 		[Event.Tick]
 		private void Tick()
 		{
 			UpdateShapeDeleteQueue();
+		}
 
-			if ( QueuedFullUpdate )
-			{
-				FullUpdate();
-			}
+		private bool AreAdjacentChunksUpdating()
+		{
+			return GetNeighbours().Any( c => c.IsQueuedForFullUpdate );
 		}
 
 		private void UpdateShapeDeleteQueue()
@@ -1076,24 +1068,6 @@ namespace Facepunch.Voxels
 
 			LightMap.UpdateTorchLight();
 			LightMap.UpdateSunLight();
-		}
-
-		private bool AreAdjacentChunksUpdating()
-		{
-			return GetNeighbours().Any( c => c.IsFullUpdateActive );
-		}
-
-		private void StartFullUpdateTask()
-		{
-			try
-			{
-				UpdateVerticesResult = StartUpdateVerticesTask();
-				BuildCollision();
-			}
-			catch ( Exception e )
-			{
-				Log.Error( e );
-			}
 		}
 	}
 }
