@@ -51,10 +51,9 @@ namespace Facepunch.Voxels
 		public Dictionary<IntVector3, BlockState> BlockStates { get; set; } = new();
 		public ChunkVertexData UpdateVerticesResult { get; set; }
 		public HashSet<IntVector3> DirtyBlockStates { get; set; } = new();
+		public bool IsQueuedForFullUpdate { get; set; }
 		public bool HasDoneFirstFullUpdate { get; set; }
-		public bool IsFullUpdateActive { get; set; }
 		public ChunkGenerator Generator { get; set; }
-		public bool QueueRebuild { get; set; }
 		public bool HasOnlyAirBlocks { get; set; }
 		public bool IsModelCreated { get; private set; }
 		public bool HasGenerated { get; private set; }
@@ -88,8 +87,8 @@ namespace Facepunch.Voxels
 		private Dictionary<int, BlockEntity> Entities { get; set; }
 		private List<QueuedTick> QueuedTicks { get; set; } = new();
 		private Queue<QueuedTick> TicksToRun { get; set; } = new();
+		private bool IsWaitingForLightingUpdate { get; set; }
 		private object VertexLock = new object();
-		private bool QueuedFullUpdate { get; set; }
 		private bool IsInitializing { get; set; }
 
 		public bool IsValid => Body.IsValid();
@@ -138,6 +137,11 @@ namespace Facepunch.Voxels
 			IsInitializing = true;
 
 			await GameTask.RunInThreadAsync( StartThreadedInitializeTask );
+
+			if ( IsClient )
+			{
+				LightMap.UpdateTexture();
+			}
 
 			CreateEntities();
 			Initialized = true;
@@ -237,36 +241,29 @@ namespace Facepunch.Voxels
 			return true;
 		}
 
-		public bool IsFullUpdateTaskRunning()
-		{
-			return IsFullUpdateActive;
-		}
-
 		public void QueueFullUpdate()
 		{
 			if ( !HasDoneFirstFullUpdate ) return;
-			QueuedFullUpdate = true;
+			World.AddToFullUpdateList( this );
+			IsQueuedForFullUpdate = true;
 		}
 
-		public async void FullUpdate()
+		public void FullUpdate()
 		{
-			if ( !IsValid || IsFullUpdateTaskRunning() )
-				return;
+			LightMap.UpdateTorchLight();
+			LightMap.UpdateSunLight();
 
-			try
+			UpdateVerticesResult = StartUpdateVerticesTask();
+			BuildCollision();
+
+			if ( IsClient )
 			{
-				IsFullUpdateActive = true;
-				QueuedFullUpdate = false;
-
-				await GameTask.RunInThreadAsync( StartFullUpdateTask );
-
-				IsFullUpdateActive = false;
-				QueueRebuild = true;
+				RunQueuedMeshUpdate();
 			}
-			catch ( TaskCanceledException )
-			{
 
-			}
+			LightMap.UpdateTexture();
+
+			IsQueuedForFullUpdate = false;
 		}
 
 		public Voxel GetVoxel( IntVector3 position )
@@ -297,18 +294,16 @@ namespace Facepunch.Voxels
 
 		public void StartFirstFullUpdateTask()
 		{
-			LightMap.UpdateTorchLight();
-			LightMap.UpdateSunLight();
-
 			UpdateVerticesResult = StartUpdateVerticesTask();
 
-			if ( World.BuildCollisionInThread )
+			BuildCollision();
+
+			if ( IsClient )
 			{
-				BuildCollision();
+				RunQueuedMeshUpdate();
 			}
 
 			HasDoneFirstFullUpdate = true;
-			QueueRebuild = true;
 		}
 
 		public void PerformFullTorchUpdate()
@@ -323,7 +318,7 @@ namespace Facepunch.Voxels
 						var blockIndex = GetLocalPositionIndex( position );
 						var block = World.GetBlockType( Blocks[blockIndex] );
 
-						if ( block.LightLevel.x > 0 || block.LightLevel.y > 0 || block.LightLevel.z > 0 )
+						if ( block.LightLevel.Length > 0 )
 						{
 							LightMap.AddRedTorchLight( position, (byte)block.LightLevel.x );
 							LightMap.AddGreenTorchLight( position, (byte)block.LightLevel.y );
@@ -415,7 +410,7 @@ namespace Facepunch.Voxels
 			}
 		}
 
-		public void BuildMeshAndCollision()
+		public void RunQueuedMeshUpdate()
 		{
 			BuildMesh();
 
@@ -429,14 +424,7 @@ namespace Facepunch.Voxels
 				IsModelCreated = true;
 			}
 
-			if ( !World.BuildCollisionInThread )
-			{
-				BuildCollision();
-			}
-
 			UpdateAdjacents( true );
-
-			QueueRebuild = false;
 		}
 
 		public void DeserializeBlockStates( BinaryReader reader )
@@ -733,6 +721,16 @@ namespace Facepunch.Voxels
 			Entities.Add( index, entity );
 		}
 
+		public void StartWaitingOnLightingUpdate()
+		{
+			IsWaitingForLightingUpdate = true;
+		}
+
+		public void StopWaitingOnLightingUpdate()
+		{
+			IsWaitingForLightingUpdate = false;
+		}
+
 		public void RemoveEntity( IntVector3 position )
 		{
 			var index = GetLocalPositionIndex( position );
@@ -1015,14 +1013,6 @@ namespace Facepunch.Voxels
 				var block = World.GetBlockType( queued.BlockId );
 				block.Tick( queued.Position );
 			}
-
-			if ( IsFullUpdateTaskRunning() ) return;
-
-			if ( !World.BuildCollisionInThread && QueueRebuild )
-			{
-				BuildCollision();
-				QueueRebuild = false;
-			}
 		}
 
 		[Event.Tick.Client]
@@ -1037,29 +1027,11 @@ namespace Facepunch.Voxels
 				}
 			}
 
-			if ( IsFullUpdateTaskRunning() ) return;
+			var viewer = Local.Client.GetChunkViewer();
 
-			if ( QueueRebuild && !AreAdjacentChunksUpdating() )
+			if ( viewer.IsValid() )
 			{
-				BuildMeshAndCollision();
-
-				var viewer = Local.Client.GetChunkViewer();
-
-				if ( viewer.IsValid() )
-				{
-					viewer.AddLoadedChunk( Offset );
-				}
-			}
-
-			if ( !QueueRebuild && HasDoneFirstFullUpdate )
-			{
-				LightMap.UpdateTorchLight();
-				LightMap.UpdateSunLight();
-
-				if ( LightMap.UpdateTexture() )
-				{
-					QueueFullUpdate();
-				}
+				viewer.AddLoadedChunk( Offset );
 			}
 		}
 
@@ -1067,11 +1039,11 @@ namespace Facepunch.Voxels
 		private void Tick()
 		{
 			UpdateShapeDeleteQueue();
+		}
 
-			if ( QueuedFullUpdate )
-			{
-				FullUpdate();
-			}
+		private bool AreAdjacentChunksUpdating()
+		{
+			return GetNeighbours().Any( c => c.IsQueuedForFullUpdate );
 		}
 
 		private void UpdateShapeDeleteQueue()
@@ -1085,7 +1057,7 @@ namespace Facepunch.Voxels
 			}
 		}
 
-		private async Task StartThreadedInitializeTask()
+		private void StartThreadedInitializeTask()
 		{
 			if ( IsServer )
 			{
@@ -1096,33 +1068,6 @@ namespace Facepunch.Voxels
 
 			LightMap.UpdateTorchLight();
 			LightMap.UpdateSunLight();
-
-			await GameTask.Delay( 1 );
-		}
-
-		private bool AreAdjacentChunksUpdating()
-		{
-			return GetNeighbours().Any( c => c.IsFullUpdateTaskRunning() );
-		}
-
-		private void StartFullUpdateTask()
-		{
-			try
-			{
-				LightMap.UpdateTorchLight();
-				LightMap.UpdateSunLight();
-
-				UpdateVerticesResult = StartUpdateVerticesTask();
-
-				if ( World.BuildCollisionInThread )
-				{
-					BuildCollision();
-				}
-			}
-			catch ( Exception e )
-			{
-				Log.Error( e );
-			}
 		}
 	}
 }

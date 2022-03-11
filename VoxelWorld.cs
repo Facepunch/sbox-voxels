@@ -54,7 +54,6 @@ namespace Facepunch.Voxels
 					var chunkRenderDistance = reader.ReadInt32();
 					var chunkUnloadDistance = reader.ReadInt32();
 					var minimumLoadedChunks = reader.ReadInt32();
-					var buildCollisionInThread = reader.ReadBoolean();
 					var opaqueMaterial = reader.ReadString();
 					var translucentMaterial = reader.ReadString();
 
@@ -67,7 +66,6 @@ namespace Facepunch.Voxels
 						ChunkRenderDistance = chunkRenderDistance,
 						ChunkUnloadDistance = chunkUnloadDistance,
 						MinimumLoadedChunks = minimumLoadedChunks,
-						BuildCollisionInThread = buildCollisionInThread,
 						OpaqueMaterial = opaqueMaterial,
 						TranslucentMaterial = translucentMaterial
 					};
@@ -232,7 +230,6 @@ namespace Facepunch.Voxels
 
 		public BlockAtlas BlockAtlas { get; private set; }
 		public IntVector3 MaxSize { get; private set; }
-		public bool BuildCollisionInThread { get; private set; }
 		public string OpaqueMaterial { get; private set; }
 		public string TranslucentMaterial { get; private set; }
 		public int MinimumLoadedChunks { get; private set; }
@@ -253,6 +250,7 @@ namespace Facepunch.Voxels
 		public FastNoiseLite CaveNoise;
 
 		private ConcurrentQueue<Chunk>[] ChunkInitialUpdateQueues = new ConcurrentQueue<Chunk>[1];
+		private ConcurrentQueue<Chunk> ChunkFullUpdateQueue = new ConcurrentQueue<Chunk>();
 
 		private string BlockAtlasFileName { get; set; }
 		private byte NextAvailableBlockId { get; set; }
@@ -335,6 +333,14 @@ namespace Facepunch.Voxels
 			if ( chunk.IsValid() )
 			{
 				chunk.QueueTick( position, block, delay );
+			}
+		}
+
+		public void AddToFullUpdateList( Chunk chunk )
+		{
+			if ( !ChunkFullUpdateQueue.Contains( chunk ) )
+			{
+				ChunkFullUpdateQueue.Enqueue( chunk );
 			}
 		}
 
@@ -471,7 +477,6 @@ namespace Facepunch.Voxels
 					writer.Write( ChunkRenderDistance );
 					writer.Write( ChunkUnloadDistance );
 					writer.Write( MinimumLoadedChunks );
-					writer.Write( BuildCollisionInThread );
 					writer.Write( OpaqueMaterial );
 					writer.Write( TranslucentMaterial );
 					writer.Write( BlockAtlasFileName );
@@ -528,11 +533,6 @@ namespace Facepunch.Voxels
 		{
 			OpaqueMaterial = opaqueMaterialName;
 			TranslucentMaterial = translucentMaterialName;
-		}
-
-		public void SetBuildCollisionInThread( bool value )
-		{
-			BuildCollisionInThread = value;
 		}
 
 		public bool SetBlockInDirection( Vector3 origin, Vector3 direction, byte blockId, bool checkSourceCollision = false )
@@ -620,10 +620,9 @@ namespace Facepunch.Voxels
 		}
 
 		[ClientRpc]
-		public static async void ReceiveChunks( byte[] data )
+		public static void ReceiveChunks( byte[] data )
 		{
 			var decompressed = CompressionHelper.Decompress( data );
-			var viewer = Local.Client.GetChunkViewer();
 
 			using ( var stream = new MemoryStream( decompressed ) )
 			{
@@ -647,11 +646,6 @@ namespace Facepunch.Voxels
 						chunk.DeserializeBlockStates( reader );
 
 						_ = chunk.Initialize();
-
-						if ( i % 32 == 0 )
-						{
-							await GameTask.Delay( 5 );
-						}
 					}
 				}
 			}
@@ -904,8 +898,10 @@ namespace Facepunch.Voxels
 			for ( var i = 0; i < ChunkInitialUpdateQueues.Length; i++ )
 			{
 				var index = i;
-				_ = GameTask.RunInThreadAsync( () => ChunkFullUpdateTask( index ) );
+				GameTask.RunInThreadAsync( () => ChunkFullUpdateTask( index ) );
 			}
+
+			GameTask.RunInThreadAsync( ChunkLightingUpdateTask );
 		}
 
 		public bool SetBlockAndUpdate( IntVector3 position, byte blockId, int direction, bool forceUpdate = false )
@@ -981,21 +977,34 @@ namespace Facepunch.Voxels
 
 			if ( (blockId != 0 && currentBlockId == 0) || (blockId == 0 && currentBlockId != 0) )
 			{
+				var currentBlock = GetBlockType( currentBlockId );
 				var block = GetBlockType( blockId );
 
-				RemoveRedTorchLight( position );
-				RemoveGreenTorchLight( position );
-				RemoveBlueTorchLight( position );
-				RemoveSunLight( position );
-
-				if ( block.LightLevel.x > 0 || block.LightLevel.y > 0 || block.LightLevel.z > 0 )
+				if ( block.LightLevel.Length > 0 )
 				{
-					AddRedTorchLight( position, (byte)block.LightLevel.x );
-					AddGreenTorchLight( position, (byte)block.LightLevel.y );
-					AddBlueTorchLight( position, (byte)block.LightLevel.z );
+					if ( block.LightLevel.x > 0 )
+						AddRedTorchLight( position, (byte)block.LightLevel.x );
+					else
+						RemoveRedTorchLight( position );
+
+					if ( block.LightLevel.y > 0 )
+						AddGreenTorchLight( position, (byte)block.LightLevel.y );
+					else
+						RemoveGreenTorchLight( position );
+
+					if ( block.LightLevel.z > 0 )
+						AddBlueTorchLight( position, (byte)block.LightLevel.z );
+					else
+						RemoveBlueTorchLight( position );
+				}
+				else
+				{
+					RemoveBlueTorchLight( position );
+					RemoveRedTorchLight( position );
+					RemoveGreenTorchLight( position );
+					RemoveSunLight( position );
 				}
 
-				var currentBlock = GetBlockType( currentBlockId );
 				currentBlock.OnBlockRemoved( chunk, position );
 
 				chunk.BlockStates.Remove( localPosition );
@@ -1003,7 +1012,7 @@ namespace Facepunch.Voxels
 
 				block.OnBlockAdded( chunk, position, direction );
 
-				var entityName = IsServer ? block.ServerEntity : block.ClientEntity;
+				var entityName = IsServer ? block.ServerEntity : block.ClientEntity;   
 
 				if ( !string.IsNullOrEmpty( entityName ) )
 				{
@@ -1227,6 +1236,34 @@ namespace Facepunch.Voxels
 				if ( client.Components.TryGet<ChunkViewer>( out var viewer ) )
 				{
 					viewer.Update();
+				}
+			}
+		}
+
+		private void ChunkLightingUpdateTask()
+		{
+			while ( true )
+			{
+				try
+				{
+					if ( !Game.Current.IsValid() ) break;
+
+					while ( ChunkFullUpdateQueue.Count > 0 )
+					{
+						if ( ChunkFullUpdateQueue.TryDequeue( out var chunk ) )
+						{
+							chunk.FullUpdate();
+						}
+					}
+				}
+				catch ( TaskCanceledException )
+				{
+					break;
+				}
+				catch ( Exception e )
+				{
+					Log.Error( e );
+					break;
 				}
 			}
 		}
