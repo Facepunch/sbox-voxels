@@ -919,10 +919,10 @@ namespace Facepunch.Voxels
 			for ( var i = 0; i < ChunkInitialUpdateQueues.Length; i++ )
 			{
 				var index = i;
-				GameTask.RunInThreadAsync( () => ChunkFullUpdateTask( index ) );
+				GameTask.RunInThreadAsync( () => ChunkInitialUpdateTask( index ) );
 			}
 
-			GameTask.RunInThreadAsync( ChunkLightingUpdateTask );
+			GameTask.RunInThreadAsync( ChunkFullUpdateTask );
 		}
 
 		public bool SetBlockAndUpdate( IntVector3 position, byte blockId, int direction, bool forceUpdate = false )
@@ -996,76 +996,70 @@ namespace Facepunch.Voxels
 
 			if ( blockId == currentBlockId ) return false;
 
-			if ( (blockId != 0 && currentBlockId == 0) || (blockId == 0 && currentBlockId != 0) )
+			var currentBlock = GetBlockType( currentBlockId );
+			var block = GetBlockType( blockId );
+
+			if ( block.LightLevel.Length > 0 )
 			{
-				var currentBlock = GetBlockType( currentBlockId );
-				var block = GetBlockType( blockId );
-
-				if ( block.LightLevel.Length > 0 )
-				{
-					if ( block.LightLevel.x > 0 )
-						AddRedTorchLight( position, (byte)block.LightLevel.x );
-					else
-						RemoveRedTorchLight( position );
-
-					if ( block.LightLevel.y > 0 )
-						AddGreenTorchLight( position, (byte)block.LightLevel.y );
-					else
-						RemoveGreenTorchLight( position );
-
-					if ( block.LightLevel.z > 0 )
-						AddBlueTorchLight( position, (byte)block.LightLevel.z );
-					else
-						RemoveBlueTorchLight( position );
-				}
+				if ( block.LightLevel.x > 0 )
+					AddRedTorchLight( position, (byte)block.LightLevel.x );
 				else
-				{
-					RemoveBlueTorchLight( position );
 					RemoveRedTorchLight( position );
-					RemoveGreenTorchLight( position );
-					RemoveSunLight( position );
-				}
 
-				currentBlock.OnBlockRemoved( chunk, position );
-
-				chunk.BlockStates.Remove( localPosition );
-				chunk.SetBlock( blockIndex, blockId );
-
-				block.OnBlockAdded( chunk, position, direction );
-
-				var entityName = IsServer ? block.ServerEntity : block.ClientEntity;   
-
-				if ( !string.IsNullOrEmpty( entityName ) )
-				{
-					var entity = Library.Create<BlockEntity>( entityName );
-					entity.BlockType = block;
-					chunk.SetEntity( localPosition, entity );
-				}
+				if ( block.LightLevel.y > 0 )
+					AddGreenTorchLight( position, (byte)block.LightLevel.y );
 				else
-				{
-					chunk.RemoveEntity( localPosition );
-				}
+					RemoveGreenTorchLight( position );
 
-				for ( var i = 0; i < 5; i++ )
-				{
-					var neighbourPosition = position + Chunk.BlockDirections[i];
-
-					if ( IsInBounds( neighbourPosition ) )
-					{
-						var neighbourId = GetBlock( neighbourPosition );
-						var neighbourBlock = GetBlockType( neighbourId );
-						var neighbourChunk = GetChunk( neighbourPosition );
-
-						if ( neighbourChunk.IsValid() )
-							neighbourBlock.OnNeighbourUpdated( neighbourChunk, neighbourPosition, position );
-					}
-				}
-
-				return true;
-
+				if ( block.LightLevel.z > 0 )
+					AddBlueTorchLight( position, (byte)block.LightLevel.z );
+				else
+					RemoveBlueTorchLight( position );
+			}
+			else
+			{
+				RemoveBlueTorchLight( position );
+				RemoveRedTorchLight( position );
+				RemoveGreenTorchLight( position );
+				RemoveSunLight( position );
 			}
 
-			return false;
+			currentBlock.OnBlockRemoved( chunk, position );
+
+			chunk.BlockStates.Remove( localPosition );
+			chunk.SetBlock( blockIndex, blockId );
+
+			block.OnBlockAdded( chunk, position, direction );
+
+			var entityName = IsServer ? block.ServerEntity : block.ClientEntity;   
+
+			if ( !string.IsNullOrEmpty( entityName ) )
+			{
+				var entity = Library.Create<BlockEntity>( entityName );
+				entity.BlockType = block;
+				chunk.SetEntity( localPosition, entity );
+			}
+			else
+			{
+				chunk.RemoveEntity( localPosition );
+			}
+
+			for ( var i = 0; i < 5; i++ )
+			{
+				var neighbourPosition = position + Chunk.BlockDirections[i];
+
+				if ( IsInBounds( neighbourPosition ) )
+				{
+					var neighbourId = GetBlock( neighbourPosition );
+					var neighbourBlock = GetBlockType( neighbourId );
+					var neighbourChunk = GetChunk( neighbourPosition );
+
+					if ( neighbourChunk.IsValid() )
+						neighbourBlock.OnNeighbourUpdated( neighbourChunk, neighbourPosition, position );
+				}
+			}
+
+			return true;
 		}
 
 		public static IntVector3 GetAdjacentPosition( IntVector3 position, int side )
@@ -1261,7 +1255,7 @@ namespace Facepunch.Voxels
 			}
 		}
 
-		private void ChunkLightingUpdateTask()
+		private async void ChunkFullUpdateTask()
 		{
 			while ( true )
 			{
@@ -1276,6 +1270,8 @@ namespace Facepunch.Voxels
 							chunk.FullUpdate();
 						}
 					}
+
+					await GameTask.Yield();
 				}
 				catch ( TaskCanceledException )
 				{
@@ -1289,7 +1285,7 @@ namespace Facepunch.Voxels
 			}
 		}
 
-		private async void ChunkFullUpdateTask( int index )
+		private async void ChunkInitialUpdateTask( int index )
 		{
 			var chunksToUpdate = new List<Chunk>();
 			var queue = ChunkInitialUpdateQueues[index];
@@ -1310,7 +1306,7 @@ namespace Facepunch.Voxels
 
 					if ( chunksToUpdate.Count == 0 )
 					{
-						await GameTask.Delay( 1000 / 30 );
+						await GameTask.Yield();
 						continue;
 					}
 
@@ -1321,7 +1317,7 @@ namespace Facepunch.Voxels
 					{
 						if ( !Local.Pawn.IsValid() )
 						{
-							await GameTask.Delay( 1000 / 30 );
+							await GameTask.Yield();
 							continue;
 						}
 
