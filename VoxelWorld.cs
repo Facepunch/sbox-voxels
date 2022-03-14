@@ -529,6 +529,27 @@ namespace Facepunch.Voxels
 			MinimumLoadedChunks = minimum;
 		}
 
+		public IEnumerable<IntVector3> GetBlocksInBox( IntVector3 mins, IntVector3 maxs )
+		{
+			var minX = Math.Min( mins.x, maxs.x );
+			var minY = Math.Min( mins.y, maxs.y );
+			var minZ = Math.Min( mins.z, maxs.z );
+			var maxX = Math.Max( mins.x, maxs.x );
+			var maxY = Math.Max( mins.y, maxs.y );
+			var maxZ = Math.Max( mins.z, maxs.z );
+
+			for ( var x = minX; x <= maxX; x++ )
+			{
+				for ( var y = minY; y <= maxY; y++ )
+				{
+					for ( var z = minZ; z <= maxZ; z++ )
+					{
+						yield return new IntVector3( x, y, z );
+					}
+				}
+			}
+		}
+
 		public void SetMaterials( string opaqueMaterialName, string translucentMaterialName )
 		{
 			OpaqueMaterial = opaqueMaterialName;
@@ -1275,6 +1296,8 @@ namespace Facepunch.Voxels
 
 			while ( true )
 			{
+				if ( !Game.Current.IsValid() ) break;
+
 				try
 				{
 					while ( queue.Count > 0 )
