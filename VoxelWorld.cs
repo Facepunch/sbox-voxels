@@ -529,7 +529,7 @@ namespace Facepunch.Voxels
 			MinimumLoadedChunks = minimum;
 		}
 
-		public IEnumerable<IntVector3> GetBlocksInBox( IntVector3 mins, IntVector3 maxs )
+		public IEnumerable<IntVector3> GetPositionsInBox( IntVector3 mins, IntVector3 maxs )
 		{
 			var minX = Math.Min( mins.x, maxs.x );
 			var minY = Math.Min( mins.y, maxs.y );
