@@ -1271,7 +1271,7 @@ namespace Facepunch.Voxels
 						}
 					}
 
-					await GameTask.Yield();
+					await GameTask.Delay( 1000 / 30 );
 				}
 				catch ( TaskCanceledException )
 				{
@@ -1306,7 +1306,7 @@ namespace Facepunch.Voxels
 
 					if ( chunksToUpdate.Count == 0 )
 					{
-						await GameTask.Yield();
+						await GameTask.Delay( 1000 / 30 );
 						continue;
 					}
 
@@ -1317,7 +1317,7 @@ namespace Facepunch.Voxels
 					{
 						if ( !Local.Pawn.IsValid() )
 						{
-							await GameTask.Yield();
+							await GameTask.Delay( 1000 / 30 );
 							continue;
 						}
 
