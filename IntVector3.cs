@@ -25,6 +25,11 @@ namespace Facepunch.Voxels
 			return new IntVector3( c1.x + c2.x, c1.y + c2.y, c1.z + c2.z );
 		}
 
+		public static IntVector3 operator -( IntVector3 c1, IntVector3 c2 )
+		{
+			return new IntVector3( c1.x - c2.x, c1.y - c2.y, c1.z - c2.z );
+		}
+
 		public static IntVector3 operator +( IntVector3 c1, int c2 )
 		{
 			return new IntVector3( c1.x * c2, c1.y * c2, c1.z * c2 );

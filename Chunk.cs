@@ -516,6 +516,11 @@ namespace Facepunch.Voxels
 				return null;
 		}
 
+		public void SetState<T>( IntVector3 position, T state ) where T : BlockState
+		{
+			BlockStates[position] = state;
+		}
+
 		public int GetLocalPositionIndex( int x, int y, int z )
 		{
 			return x * SizeY * SizeZ + y * SizeZ + z;

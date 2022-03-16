@@ -1,4 +1,5 @@
 ﻿using Sandbox;
+using System;
 using System.IO;
 
 namespace Facepunch.Voxels
@@ -36,6 +37,11 @@ namespace Facepunch.Voxels
 		public virtual void Deserialize( BinaryReader reader )
 		{
 			Health = reader.ReadByte();
+		}
+
+		public virtual BlockState Copy()
+		{
+			return (BlockState)MemberwiseClone();
 		}
 	}
 }
