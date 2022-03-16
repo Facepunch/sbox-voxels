@@ -1029,6 +1029,7 @@ namespace Facepunch.Voxels
 				{
 					var layer = RenderLayers[i];
 					layer.SceneObject?.Attributes?.Set( "GlobalBrightness", World.DayCycle.Brightness );
+					layer.SceneObject?.Attributes?.Set( "GlobalOpacity", World.GlobalOpacity );
 				}
 			}
 

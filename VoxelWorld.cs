@@ -213,6 +213,7 @@ namespace Facepunch.Voxels
 		public List<ChunkBlockUpdate> OutgoingBlockUpdates { get; private set; } = new();
 		public Dictionary<byte, Biome> BiomeLookup { get; private set; } = new();
 		public Dictionary<IntVector3, Chunk> Chunks { get; private set; } = new();
+		public float GlobalOpacity { get; set; } = 1f;
 		public List<Biome> Biomes { get; private set; } = new();
 
 		public DayCycleController DayCycle
@@ -326,7 +327,7 @@ namespace Facepunch.Voxels
 			return GetOrCreateChunk( new IntVector3( x, y, z ) );
 		}
 
-		public void QueueTick( IntVector3 position, BlockType block, float delay )
+		public void QueueBlockTick( IntVector3 position, BlockType block, float delay )
 		{
 			var chunk = GetChunk( position );
 

@@ -29,7 +29,7 @@ namespace Facepunch.Voxels
 		{
 			if ( IsServer && ShouldSpread( position ) )
 			{
-				World.QueueTick( position, this, 0.15f );
+				World.QueueBlockTick( position, this, 0.15f );
 			}
 		}
 
@@ -37,7 +37,7 @@ namespace Facepunch.Voxels
 		{
 			if ( IsServer && ShouldSpread( position ) )
 			{
-				World.QueueTick( position, this, 0.15f );
+				World.QueueBlockTick( position, this, 0.15f );
 			}
 		}
 
@@ -54,7 +54,7 @@ namespace Facepunch.Voxels
 				if ( blockBelowId == 0 )
 				{
 					World.SetBlockOnServer( blockBelowPosition, BlockId );
-					World.QueueTick( blockBelowPosition, this, 0.15f );
+					World.QueueBlockTick( blockBelowPosition, this, 0.15f );
 
 					var belowState = World.GetOrCreateState<LiquidState>( blockBelowPosition );
 
@@ -114,7 +114,7 @@ namespace Facepunch.Voxels
 				if ( neighbourBlockId == 0 )
 				{
 					World.SetBlockOnServer( neighbourBlockPosition, BlockId );
-					World.QueueTick( neighbourBlockPosition, this, 0.15f );
+					World.QueueBlockTick( neighbourBlockPosition, this, 0.15f );
 
 					var neighbourState = World.GetOrCreateState<LiquidState>( neighbourBlockPosition );
 
