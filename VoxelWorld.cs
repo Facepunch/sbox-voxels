@@ -530,6 +530,138 @@ namespace Facepunch.Voxels
 			MinimumLoadedChunks = minimum;
 		}
 
+		public async Task<bool> LoadFromFile( string fileName )
+		{
+			if ( !FileSystem.Data.FileExists( fileName ) )
+			{
+				return false;
+			}
+
+			var bytes = await FileSystem.Data.ReadAllBytesAsync( fileName );
+			var blockIdRemap = new Dictionary<byte, byte>();
+
+			try
+			{
+				//var decompressed = CompressionHelper.Decompress( bytes );
+
+				using ( var stream = new MemoryStream( bytes ) )
+				{
+					using ( var reader = new BinaryReader( stream ) )
+					{
+						var voxelSize = reader.ReadInt32();
+						var maxSizeX = reader.ReadInt32();
+						var maxSizeY = reader.ReadInt32();
+						var maxSizeZ = reader.ReadInt32();
+						var chunkSizeX = reader.ReadInt32();
+						var chunkSizeY = reader.ReadInt32();
+						var chunkSizeZ = reader.ReadInt32();
+
+						SetVoxelSize( voxelSize );
+						SetMaxSize( maxSizeX, maxSizeY, maxSizeZ );
+						SetChunkSize( chunkSizeX, chunkSizeY, chunkSizeZ );
+
+						var blockCount = reader.ReadInt32();
+
+						for ( var i = 0; i < blockCount; i++ )
+						{
+							var blockId = reader.ReadByte();
+							var blockType = reader.ReadString();
+
+							if ( !BlockTypes.TryGetValue( blockType, out var realBlockId ) )
+								throw new Exception( $"Unable to locate a block id for {blockType}!" );
+
+							blockIdRemap[blockId] = realBlockId;
+						}
+
+						var chunkCount = reader.ReadInt32();
+
+						for ( var i = 0; i < chunkCount; i++ )
+						{
+							var chunkX = reader.ReadInt32();
+							var chunkY = reader.ReadInt32();
+							var chunkZ = reader.ReadInt32();
+							var chunk = GetOrCreateChunk( chunkX, chunkY, chunkZ );
+
+							chunk.HasOnlyAirBlocks = reader.ReadBoolean();
+
+							if ( !chunk.HasOnlyAirBlocks )
+								chunk.Blocks = reader.ReadBytes( ChunkSize.x * ChunkSize.y * ChunkSize.z );
+
+							for ( var j = 0; j < chunk.Blocks.Length; j++ )
+							{
+								var currentBlockId = chunk.Blocks[j];
+
+								if ( blockIdRemap.TryGetValue( currentBlockId, out var remappedBlockId ) )
+								{
+									chunk.Blocks[j] = remappedBlockId;
+								}
+							}
+
+							chunk.DeserializeBlockStates( reader );
+
+							await GameTask.Delay( 5 );
+						}
+					}
+				}
+
+				return true;
+			}
+			catch ( Exception e )
+			{
+				Log.Error( e );
+				return false;
+			}
+		}
+
+		public void SaveToFile( string fileName )
+		{
+			try
+			{
+				using ( var stream = FileSystem.Data.OpenWrite( fileName, FileMode.Create ) )
+				{
+					using ( var writer = new BinaryWriter( stream ) )
+					{
+						writer.Write( VoxelSize );
+						writer.Write( MaxSize.x );
+						writer.Write( MaxSize.y );
+						writer.Write( MaxSize.z );
+						writer.Write( ChunkSize.x );
+						writer.Write( ChunkSize.y );
+						writer.Write( ChunkSize.z );
+
+						writer.Write( BlockTypes.Count );
+
+						foreach ( var kv in BlockTypes )
+						{
+							writer.Write( kv.Value );
+							writer.Write( kv.Key );
+						}
+
+						writer.Write( Chunks.Count );
+
+						foreach ( var kv in Chunks )
+						{
+							var chunk = kv.Value;
+
+							writer.Write( chunk.Offset.x );
+							writer.Write( chunk.Offset.y );
+							writer.Write( chunk.Offset.z );
+							writer.Write( chunk.HasOnlyAirBlocks );
+
+							if ( !chunk.HasOnlyAirBlocks )
+								writer.Write( chunk.Blocks );
+
+							chunk.SerializeBlockStates( writer );
+						}
+					}
+				}
+			}
+			catch ( Exception e )
+			{
+				Log.Error( e );
+			}
+		}
+
 		public IEnumerable<IntVector3> GetPositionsInBox( IntVector3 mins, IntVector3 maxs )
 		{
 			var minX = Math.Min( mins.x, maxs.x );
