@@ -4,7 +4,7 @@ using System;
 namespace Facepunch.Voxels
 {
 	[Library]
-	public class EmptyBiome : ChunkGenerator
+	public class EmptyBiome : Biome
 	{
 
 	}
