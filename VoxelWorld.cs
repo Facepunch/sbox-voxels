@@ -530,14 +530,8 @@ namespace Facepunch.Voxels
 			MinimumLoadedChunks = minimum;
 		}
 
-		public async Task<bool> LoadFromFile( string fileName )
+		public async Task<bool> LoadFromBytes( byte[] bytes )
 		{
-			if ( !FileSystem.Data.FileExists( fileName ) )
-			{
-				return false;
-			}
-
-			var bytes = await FileSystem.Data.ReadAllBytesAsync( fileName );
 			var blockIdRemap = new Dictionary<byte, byte>();
 
 			try
@@ -613,11 +607,23 @@ namespace Facepunch.Voxels
 			}
 		}
 
-		public void SaveToFile( string fileName )
+		public async Task<bool> LoadFromFile( BaseFileSystem fs, string fileName )
+		{
+			if ( !fs.FileExists( fileName ) )
+			{
+				return false;
+			}
+
+			var bytes = await fs.ReadAllBytesAsync( fileName );
+
+			return await LoadFromBytes( bytes );
+		}
+
+		public void SaveToFile( BaseFileSystem fs, string fileName )
 		{
 			try
 			{
-				using ( var stream = FileSystem.Data.OpenWrite( fileName, FileMode.Create ) )
+				using ( var stream = fs.OpenWrite( fileName, FileMode.Create ) )
 				{
 					using ( var writer = new BinaryWriter( stream ) )
 					{
