@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Facepunch.Voxels
@@ -31,12 +32,24 @@ namespace Facepunch.Voxels
 		}
 
 		[ClientRpc]
+		public static void DestroyWorldOnClient()
+		{
+			var viewer = Local.Client.GetChunkViewer();
+
+			if ( viewer.IsValid() )
+			{
+				viewer.Reset();
+			}
+
+			Current?.Destroy();
+			Current = null;
+		}
+
+		[ClientRpc]
 		public static void Receive( byte[] data )
 		{
-			if ( Current != null )
-			{
-				Current.Destroy();
-			}
+			Current?.Destroy();
+			Current = null;
 
 			using ( var stream = new MemoryStream( data ) )
 			{
@@ -105,7 +118,7 @@ namespace Facepunch.Voxels
 				}
 			}
 
-			Current.Init();
+			Current.Initialize();
 		}
 
 		[ClientRpc]
@@ -236,6 +249,7 @@ namespace Facepunch.Voxels
 		public int MinimumLoadedChunks { get; private set; }
 		public int ChunkRenderDistance { get; private set; }
 		public int ChunkUnloadDistance { get; private set; }
+		public bool IsLoadingFromFile { get; private set; }
 		public IntVector3 ChunkSize { get; private set; } = new IntVector3( 32, 32, 32 );
 		public int VoxelSize { get; private set; } = 48;
 		public bool Initialized { get; private set; }
@@ -261,8 +275,9 @@ namespace Facepunch.Voxels
 		private DayCycleController CachedDayCycle;
 		private BiomeSampler BiomeSampler;
 
+		public bool IsDestroyed { get; private set; }
 		public bool IsInfinite => MaxSize == 0;
-		public bool IsValid => true;
+		public bool IsValid => !IsDestroyed;
 
 		private VoxelWorld() { }
 
@@ -536,7 +551,24 @@ namespace Facepunch.Voxels
 
 			try
 			{
-				//var decompressed = CompressionHelper.Decompress( bytes );
+				IsLoadingFromFile = true;
+
+				foreach ( var client in Client.All )
+				{
+					var viewer = client.GetChunkViewer();
+
+					if ( viewer.IsValid() )
+					{
+						viewer.Reset();
+					}
+				}
+
+				DestroyWorldOnClient( To.Everyone );
+
+				if ( Initialized )
+				{
+					Reset();
+				}
 
 				using ( var stream = new MemoryStream( bytes ) )
 				{
@@ -598,7 +630,21 @@ namespace Facepunch.Voxels
 					}
 				}
 
+				if ( Initialized )
+				{
+					foreach ( var client in Client.All )
+					{
+						Send( client );
+					}
+				}
+
+				IsLoadingFromFile = false;
+
 				return true;
+			}
+			catch ( TaskCanceledException )
+			{
+				return false;
 			}
 			catch ( Exception e )
 			{
@@ -824,6 +870,24 @@ namespace Facepunch.Voxels
 			}
 		}
 
+		public void Reset()
+		{
+			ChunkFullUpdateQueue.Clear();
+			OutgoingBlockUpdates.Clear();
+
+			foreach ( var queue in ChunkInitialUpdateQueues )
+			{
+				queue.Clear();
+			}
+
+			foreach ( var kv in Chunks )
+			{
+				kv.Value.Destroy();
+			}
+
+			Chunks.Clear();
+		}
+
 		public Voxel GetVoxel( IntVector3 position )
 		{
 			return GetVoxel( position.x, position.y, position.z );
@@ -1045,17 +1109,12 @@ namespace Facepunch.Voxels
 
 		public void Destroy()
 		{
-			foreach ( var kv in Chunks )
-			{
-				kv.Value.Destroy();
-			}
-
 			Event.Unregister( this );
-
-			Chunks.Clear();
+			IsDestroyed = true;
+			Reset();
 		}
 
-		public void Init()
+		public void Initialize()
 		{
 			if ( Initialized ) return;
 
@@ -1369,6 +1428,8 @@ namespace Facepunch.Voxels
 		[Event.Tick.Server]
 		private void ServerTick()
 		{
+			if ( IsLoadingFromFile ) return;
+
 			if ( OutgoingBlockUpdates.Count > 0 )
 			{
 				using ( var stream = new MemoryStream() )
@@ -1405,11 +1466,13 @@ namespace Facepunch.Voxels
 
 		private async void ChunkFullUpdateTask()
 		{
-			while ( true )
+			while ( !IsDestroyed )
 			{
 				try
 				{
 					if ( !Game.Current.IsValid() ) break;
+
+					await GameTask.Delay( 1000 / 30 );
 
 					while ( ChunkFullUpdateQueue.Count > 0 )
 					{
@@ -1418,8 +1481,6 @@ namespace Facepunch.Voxels
 							chunk.FullUpdate();
 						}
 					}
-
-					await GameTask.Delay( 1000 / 30 );
 				}
 				catch ( TaskCanceledException )
 				{
@@ -1438,12 +1499,12 @@ namespace Facepunch.Voxels
 			var chunksToUpdate = new List<Chunk>();
 			var queue = ChunkInitialUpdateQueues[index];
 
-			while ( true )
+			while ( !IsDestroyed )
 			{
-				if ( !Game.Current.IsValid() ) break;
-
 				try
 				{
+					if ( !Game.Current.IsValid() ) break;
+
 					while ( queue.Count > 0 )
 					{
 						if ( queue.TryDequeue( out var queuedChunk ) )

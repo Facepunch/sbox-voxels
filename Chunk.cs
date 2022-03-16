@@ -58,6 +58,7 @@ namespace Facepunch.Voxels
 		public bool IsModelCreated { get; private set; }
 		public bool HasGenerated { get; private set; }
 		public bool Initialized { get; private set; }
+		public bool IsDestroyed { get; private set; }
 		public Vector3 Bounds { get; private set; }
 		public Biome Biome { get; set; }
 
@@ -87,7 +88,6 @@ namespace Facepunch.Voxels
 		private Dictionary<int, BlockEntity> Entities { get; set; }
 		private List<QueuedTick> QueuedTicks { get; set; } = new();
 		private Queue<QueuedTick> TicksToRun { get; set; } = new();
-		private bool IsWaitingForLightingUpdate { get; set; }
 		private object VertexLock = new object();
 		private bool IsInitializing { get; set; }
 
@@ -137,6 +137,12 @@ namespace Facepunch.Voxels
 			IsInitializing = true;
 
 			await GameTask.RunInThreadAsync( StartThreadedInitializeTask );
+
+			if ( !IsValid )
+			{
+				// We might not be valid anymore.
+				return;
+			}
 
 			if ( IsClient )
 			{
@@ -696,7 +702,7 @@ namespace Facepunch.Voxels
 				Shape = null;
 			}
 
-			Body = null;
+			IsDestroyed = true;
 
 			Event.Unregister( this );
 		}
@@ -724,16 +730,6 @@ namespace Facepunch.Voxels
 			var index = GetLocalPositionIndex( position );
 			RemoveEntity( position );
 			Entities.Add( index, entity );
-		}
-
-		public void StartWaitingOnLightingUpdate()
-		{
-			IsWaitingForLightingUpdate = true;
-		}
-
-		public void StopWaitingOnLightingUpdate()
-		{
-			IsWaitingForLightingUpdate = false;
 		}
 
 		public void RemoveEntity( IntVector3 position )

@@ -23,12 +23,34 @@ namespace Facepunch.Voxels
 			}
 		}
 
+		[ClientRpc]
+		public static void ResetViewerForClient()
+		{
+			var viewer = Local.Client.GetChunkViewer();
+
+			if ( viewer.IsValid() )
+			{
+				viewer.Reset();
+			}
+		}
+
 		public HashSet<IntVector3> LoadedChunks { get; private set; }
 		public HashSet<IntVector3> ChunksToRemove { get; private set; }
 		public HashSet<Chunk> ChunksToSend { get; private set; }
 		public Queue<IntVector3> ChunkSendQueue { get; private set; }
+		public TimeSince TimeSinceLastReset { get; private set; }
 
 		public bool IsValid => Entity.IsValid();
+
+		public void Reset()
+		{
+			LoadedChunks.Clear();
+			ChunksToRemove.Clear();
+			ChunksToSend.Clear();
+			ChunkSendQueue.Clear();
+			IsCurrentChunkReady = false;
+			TimeSinceLastReset = 0f;
+		}
 
 		public bool IsInMapBounds()
 		{
@@ -85,8 +107,8 @@ namespace Facepunch.Voxels
 			if ( !pawn.IsValid() ) return;
 
 			var position = pawn.Position;
-			var currentMap = VoxelWorld.Current;
-			var chunkBounds = currentMap.ChunkSize.Length;
+			var currentWorld = VoxelWorld.Current;
+			var chunkBounds = currentWorld.ChunkSize.Length;
 
 			foreach ( var offset in LoadedChunks )
 			{
@@ -95,18 +117,18 @@ namespace Facepunch.Voxels
 				if ( chunk.IsValid() )
 				{
 					var chunkPositionCenter = chunk.Offset + chunk.Center;
-					var chunkPositionSource = currentMap.ToSourcePosition( chunkPositionCenter );
+					var chunkPositionSource = currentWorld.ToSourcePosition( chunkPositionCenter );
 
-					if ( position.Distance( chunkPositionSource ) >= chunkBounds * currentMap.VoxelSize * currentMap.ChunkUnloadDistance )
+					if ( position.Distance( chunkPositionSource ) >= chunkBounds * currentWorld.VoxelSize * currentWorld.ChunkUnloadDistance )
 					{
 						RemoveLoadedChunk( chunk.Offset );
 					}
 				}
 			}
 
-			var voxelPosition = currentMap.ToVoxelPosition( position );
-			var currentChunkOffset = currentMap.ToChunkOffset( voxelPosition );
-			var currentChunk = currentMap.GetChunk( voxelPosition );
+			var voxelPosition = currentWorld.ToVoxelPosition( position );
+			var currentChunkOffset = currentWorld.ToChunkOffset( voxelPosition );
+			var currentChunk = currentWorld.GetChunk( voxelPosition );
 
 			IsCurrentChunkReady = currentChunk.IsValid() && currentChunk.HasDoneFirstFullUpdate;
 
@@ -115,15 +137,15 @@ namespace Facepunch.Voxels
 				AddLoadedChunk( currentChunkOffset );
 			}
 
-			var centerChunkPosition = new IntVector3( currentMap.ChunkSize.x / 2, currentMap.ChunkSize.y / 2, currentMap.ChunkSize.z / 2 );
+			var centerChunkPosition = new IntVector3( currentWorld.ChunkSize.x / 2, currentWorld.ChunkSize.y / 2, currentWorld.ChunkSize.z / 2 );
 
 			while ( ChunkSendQueue.Count > 0 )
 			{
 				var offset = ChunkSendQueue.Dequeue();
 				var chunkPositionCenter = offset + centerChunkPosition;
-				var chunkPositionSource = currentMap.ToSourcePosition( chunkPositionCenter );
+				var chunkPositionSource = currentWorld.ToSourcePosition( chunkPositionCenter );
 
-				if ( position.Distance( chunkPositionSource ) <= chunkBounds * currentMap.VoxelSize * currentMap.ChunkRenderDistance )
+				if ( position.Distance( chunkPositionSource ) <= chunkBounds * currentWorld.VoxelSize * currentWorld.ChunkRenderDistance )
 				{
 					var chunk = VoxelWorld.Current.GetOrCreateChunk( offset );
 					if ( !chunk.IsValid() ) continue;
@@ -139,7 +161,7 @@ namespace Facepunch.Voxels
 
 						foreach ( var neighbour in chunk.GetNeighbourOffsets() )
 						{
-							if ( currentMap.IsInBounds( neighbour ) )
+							if ( currentWorld.IsInBounds( neighbour ) )
 								ChunkSendQueue.Enqueue( neighbour );
 						}
 					}
@@ -193,6 +215,7 @@ namespace Facepunch.Voxels
 
 		protected override void OnActivate()
 		{
+			TimeSinceLastReset = 0;
 			ChunksToRemove = new();
 			ChunkSendQueue = new();
 			ChunksToSend = new();
