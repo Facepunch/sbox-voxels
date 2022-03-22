@@ -199,14 +199,14 @@ namespace Facepunch.Voxels
 			return new BBox( sourceMins, sourceMaxs );
 		}
 
-		public Vector3 ToSourcePositionCenter( IntVector3 position )
+		public Vector3 ToSourcePositionCenter( IntVector3 position, bool centerX = true, bool centerY = true, bool centerZ = true )
 		{
 			var halfVoxelSize = VoxelSize * 0.5f;
 
 			return new Vector3(
-				position.x * VoxelSize + halfVoxelSize,
-				position.y * VoxelSize + halfVoxelSize,
-				position.z * VoxelSize + halfVoxelSize
+				centerX ? position.x * VoxelSize + halfVoxelSize : position.x * VoxelSize,
+				centerY ? position.y * VoxelSize + halfVoxelSize : position.y * VoxelSize,
+				centerZ ? position.z * VoxelSize + halfVoxelSize : position.z * VoxelSize
 			);
 		}
 
