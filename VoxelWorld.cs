@@ -1,4 +1,5 @@
-﻿using Sandbox;
+﻿using Facepunch.Voxels;
+using Sandbox;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -627,6 +628,20 @@ namespace Facepunch.Voxels
 
 							await GameTask.Delay( 5 );
 						}
+
+						var entityCount = reader.ReadInt32();
+
+						if ( entityCount > 0 )
+						{
+							for ( var i = 0; i < entityCount; i++ )
+							{
+								var libraryName = reader.ReadString();
+								var entity = Library.Create<ISourceEntity>( libraryName );
+								entity.Position = reader.ReadVector3();
+								entity.Rotation = reader.ReadRotation();
+								entity.Deserialize( reader );
+							}
+						}
 					}
 				}
 
@@ -704,6 +719,22 @@ namespace Facepunch.Voxels
 								writer.Write( chunk.Blocks );
 
 							chunk.SerializeBlockStates( writer );
+						}
+
+						var entities = Entity.All.OfType<ISourceEntity>().ToList();
+						var entityCount = entities.Count;
+
+						writer.Write( entityCount );
+
+						for ( int i = 0; i < entities.Count; i++ )
+						{
+							var entity = entities[i];
+							var libraryName = Library.GetAttribute( entity.GetType() ).Name;
+
+							writer.Write( libraryName );
+							writer.Write( entity.Position );
+							writer.Write( entity.Rotation );
+							entity.Serialize( writer );
 						}
 					}
 				}
