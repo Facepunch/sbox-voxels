@@ -8,6 +8,7 @@ namespace Facepunch.Voxels
 		string Name { get; }
 		Vector3 Position { get; set; }
 		Rotation Rotation { get; set; }
+		void Delete();
 		void Serialize( BinaryWriter writer );
 		void Deserialize( BinaryReader reader );
 	}

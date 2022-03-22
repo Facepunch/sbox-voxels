@@ -903,6 +903,16 @@ namespace Facepunch.Voxels
 
 		public void Reset()
 		{
+			if ( IsServer )
+			{
+				var entities = Entity.All.OfType<ISourceEntity>();
+
+				foreach ( var entity in entities )
+				{
+					entity.Delete();
+				}
+			}
+
 			ChunkFullUpdateQueue.Clear();
 			OutgoingBlockUpdates.Clear();
 
