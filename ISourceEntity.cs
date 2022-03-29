@@ -3,13 +3,13 @@ using Sandbox;
 
 namespace Facepunch.Voxels
 {
-	public interface ISourceEntity
+	public interface ISourceEntity : IValid
 	{
 		string Name { get; }
+		void Delete();
 		Vector3 Position { get; set; }
 		Rotation Rotation { get; set; }
 		Transform Transform { get; set; }
-		void Delete();
 		void Serialize( BinaryWriter writer );
 		void Deserialize( BinaryReader reader );
 	}
