@@ -7,6 +7,7 @@ namespace Facepunch.Voxels
 	{
 		string Name { get; }
 		void Delete();
+		BBox WorldSpaceBounds { get; }
 		Vector3 Position { get; set; }
 		Rotation Rotation { get; set; }
 		Transform Transform { get; set; }
