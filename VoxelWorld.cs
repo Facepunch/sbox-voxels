@@ -194,7 +194,7 @@ namespace Facepunch.Voxels
 		{
 			var sourcePosition = ToSourcePosition( position );
 			var sourceMins = sourcePosition;
-			var sourceMaxs = sourcePosition + new Vector3( ChunkSize.x, ChunkSize.y, ChunkSize.z );
+			var sourceMaxs = sourcePosition + Vector3.One * VoxelSize;
 
 			return new BBox( sourceMins, sourceMaxs );
 		}
