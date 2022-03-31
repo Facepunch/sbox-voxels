@@ -105,10 +105,10 @@ namespace Facepunch.Voxels
 								{
 									GenerateTree( biome, position.x, position.y, position.z );
 								}
-								else if ( VoxelWorld.SuitableSpawnPositions.Count == 0 || Rand.Float() <= 0.1f )
+								else if ( VoxelWorld.Spawnpoints.Count == 0 || Rand.Float() <= 0.1f )
 								{
 									var spawnPositionSource = VoxelWorld.ToSourcePositionCenter( offset + position + new IntVector3( 0, 0, 1 ) );
-									VoxelWorld.SuitableSpawnPositions.Add( spawnPositionSource );
+									VoxelWorld.Spawnpoints.Add( spawnPositionSource );
 								}
 							}
 						}

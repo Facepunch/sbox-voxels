@@ -221,7 +221,7 @@ namespace Facepunch.Voxels
 			return new IntVector3( (int)fPosition.x, (int)fPosition.y, (int)fPosition.z );
 		}
 
-		public List<Vector3> SuitableSpawnPositions { get; private set; } = new();
+		public List<Vector3> Spawnpoints { get; private set; } = new();
 		public Dictionary<byte, BlockType> BlockData { get; private set; } = new();
 		public Dictionary<string, byte> BlockTypes { get; private set; } = new();
 		public List<ChunkBlockUpdate> OutgoingBlockUpdates { get; private set; } = new();
