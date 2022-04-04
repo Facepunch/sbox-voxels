@@ -442,6 +442,13 @@ namespace Facepunch.Voxels
 				var x = reader.ReadByte();
 				var y = reader.ReadByte();
 				var z = reader.ReadByte();
+
+				if ( !IsInside( x, y, z ) )
+				{
+					Log.Warning( $"Tried to deserialize a block state for a block outside of the world bounds ({x}, {y}, {z})!" );
+					continue;
+				}
+
 				var blockIndex = GetLocalPositionIndex( x, y, z );
 				var blockId = Blocks[blockIndex];
 				var block = World.GetBlockType( blockId );
