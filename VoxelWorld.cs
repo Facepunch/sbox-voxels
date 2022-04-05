@@ -594,10 +594,15 @@ namespace Facepunch.Voxels
 							var blockId = reader.ReadByte();
 							var blockType = reader.ReadString();
 
-							if ( !BlockTypes.TryGetValue( blockType, out var realBlockId ) )
-								throw new Exception( $"Unable to locate a block id for {blockType}!" );
-
-							blockIdRemap[blockId] = realBlockId;
+							if ( BlockTypes.TryGetValue( blockType, out var realBlockId ) )
+							{
+								blockIdRemap[blockId] = realBlockId;
+							}
+							else
+							{
+								Log.Error( $"Unable to locate a block id for {blockType}!" );
+								blockIdRemap[blockId] = 0;
+							}
 						}
 
 						var chunkCount = reader.ReadInt32();
