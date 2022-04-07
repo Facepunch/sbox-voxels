@@ -114,7 +114,9 @@ namespace Facepunch.Voxels
 						biome.Initialize();
 						Current.BiomeLookup.TryAdd( biomeId, biome );
 						Current.Biomes.Add( biome );
-						Log.Info( $"[Client] Initializing biome type {biome.Name}" );
+
+						if ( !string.IsNullOrEmpty( biome.Name ) )
+							Log.Info( $"[Client] Initializing biome type {biome.Name}" );
 					}
 				}
 			}
