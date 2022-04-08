@@ -597,14 +597,9 @@ namespace Facepunch.Voxels
 							var blockType = reader.ReadString();
 
 							if ( BlockTypes.TryGetValue( blockType, out var realBlockId ) )
-							{
 								blockIdRemap[blockId] = realBlockId;
-							}
 							else
-							{
-								Log.Error( $"Unable to locate a block id for {blockType}!" );
 								blockIdRemap[blockId] = 0;
-							}
 						}
 
 						var chunkCount = reader.ReadInt32();
@@ -619,7 +614,9 @@ namespace Facepunch.Voxels
 							chunk.HasOnlyAirBlocks = reader.ReadBoolean();
 
 							if ( !chunk.HasOnlyAirBlocks )
+							{
 								chunk.Blocks = reader.ReadBytes( ChunkSize.x * ChunkSize.y * ChunkSize.z );
+							}
 
 							for ( var j = 0; j < chunk.Blocks.Length; j++ )
 							{
@@ -631,7 +628,28 @@ namespace Facepunch.Voxels
 								}
 							}
 
-							chunk.DeserializeBlockStates( reader );
+							var blockStateCount = reader.ReadInt32();
+
+							if ( blockStateCount > 0 )
+							{
+								for ( var j = 0; j < blockStateCount; j++ )
+								{
+									var blockStateDataLength = reader.ReadInt32();
+									var blockStateData = reader.ReadBytes( blockStateDataLength );
+
+									try
+									{
+										BinaryHelper.Deserialize( blockStateData, r =>
+										{
+											chunk.DeserializeBlockState( r );
+										} );
+									}
+									catch ( Exception e )
+									{
+										Log.Error( e );
+									}
+								}
+							}
 
 							await GameTask.Delay( 5 );
 						}
@@ -642,11 +660,28 @@ namespace Facepunch.Voxels
 						{
 							for ( var i = 0; i < entityCount; i++ )
 							{
-								var libraryName = reader.ReadString();
-								var entity = Library.Create<ISourceEntity>( libraryName );
-								entity.Position = reader.ReadVector3();
-								entity.Rotation = reader.ReadRotation();
-								entity.Deserialize( reader );
+								var entityDataLength = reader.ReadInt32();
+								
+								if ( entityDataLength > 0 )
+								{
+									var entityData = reader.ReadBytes( entityDataLength );
+
+									try
+									{
+										BinaryHelper.Deserialize( entityData, r =>
+										{
+											var libraryName = r.ReadString();
+											var entity = Library.Create<ISourceEntity>( libraryName );
+											entity.Position = r.ReadVector3();
+											entity.Rotation = r.ReadRotation();
+											entity.Deserialize( r );
+										} );
+									}
+									catch ( Exception e )
+									{
+										Log.Error( e );
+									}
+								}
 							}
 						}
 					}
@@ -725,7 +760,27 @@ namespace Facepunch.Voxels
 							if ( !chunk.HasOnlyAirBlocks )
 								writer.Write( chunk.Blocks );
 
-							chunk.SerializeBlockStates( writer );
+							var blockStateCount = chunk.BlockStates.Count;
+
+							writer.Write( blockStateCount );
+
+							if ( blockStateCount > 0 )
+							{
+								foreach ( var k2v2 in chunk.BlockStates )
+								{
+									var blockStateData = BinaryHelper.Serialize( w =>
+									{
+										chunk.SerializeBlockState( k2v2.Key, k2v2.Value, w );
+									} );
+
+									writer.Write( blockStateData.Length );
+
+									if ( blockStateData.Length > 0 )
+									{
+										writer.Write( blockStateData );
+									}
+								}
+							}
 						}
 
 						var entities = Entity.All.OfType<ISourceEntity>().ToList();
@@ -735,13 +790,24 @@ namespace Facepunch.Voxels
 
 						for ( int i = 0; i < entities.Count; i++ )
 						{
-							var entity = entities[i];
-							var libraryName = Library.GetAttribute( entity.GetType() ).Name;
+							var entityData = BinaryHelper.Serialize( w =>
+							{
+								var entity = entities[i];
+								var libraryName = Library.GetAttribute( entity.GetType() ).Name;
 
-							writer.Write( libraryName );
-							writer.Write( entity.Position );
-							writer.Write( entity.Rotation );
-							entity.Serialize( writer );
+								w.Write( libraryName );
+								w.Write( entity.Position );
+								w.Write( entity.Rotation );
+
+								entity.Serialize( w );
+							} );
+
+							writer.Write( entityData.Length );
+
+							if ( entityData.Length > 0 )
+							{
+								writer.Write( entityData );
+							}
 						}
 					}
 				}

@@ -433,36 +433,40 @@ namespace Facepunch.Voxels
 			UpdateAdjacents( true );
 		}
 
+		public void DeserializeBlockState( BinaryReader reader )
+		{
+			var x = reader.ReadByte();
+			var y = reader.ReadByte();
+			var z = reader.ReadByte();
+
+			if ( !IsInside( x, y, z ) )
+			{
+				throw new Exception( $"Tried to deserialize a block state for a block outside of the world bounds ({x}, {y}, {z})!" );
+			}
+
+			var blockIndex = GetLocalPositionIndex( x, y, z );
+			var blockId = Blocks[blockIndex];
+			var block = World.GetBlockType( blockId );
+			var position = new IntVector3( x, y, z );
+
+			if ( !BlockStates.TryGetValue( position, out var state ) )
+			{
+				state = block.CreateState();
+				state.Chunk = this;
+				state.LocalPosition = position;
+				BlockStates.Add( position, state );
+			}
+
+			state.Deserialize( reader );
+		}
+
 		public void DeserializeBlockStates( BinaryReader reader )
 		{
 			var count = reader.ReadInt32();
 
 			for ( var i = 0; i < count; i++ )
 			{
-				var x = reader.ReadByte();
-				var y = reader.ReadByte();
-				var z = reader.ReadByte();
-
-				if ( !IsInside( x, y, z ) )
-				{
-					Log.Warning( $"Tried to deserialize a block state for a block outside of the world bounds ({x}, {y}, {z})!" );
-					continue;
-				}
-
-				var blockIndex = GetLocalPositionIndex( x, y, z );
-				var blockId = Blocks[blockIndex];
-				var block = World.GetBlockType( blockId );
-				var position = new IntVector3( x, y, z );
-
-				if ( !BlockStates.TryGetValue( position, out var state ) )
-				{
-					state = block.CreateState();
-					state.Chunk = this;
-					state.LocalPosition = position;
-					BlockStates.Add( position, state );
-				}
-
-				state.Deserialize( reader );
+				DeserializeBlockState( reader );
 			}
 		}
 
@@ -475,6 +479,14 @@ namespace Facepunch.Voxels
 					DeserializeBlockStates( reader );
 				}
 			}
+		}
+
+		public void SerializeBlockState( IntVector3 position, BlockState state, BinaryWriter writer )
+		{
+			writer.Write( (byte)position.x );
+			writer.Write( (byte)position.y );
+			writer.Write( (byte)position.z );
+			state.Serialize( writer );
 		}
 
 		public void SerializeBlockStates( BinaryWriter writer )
