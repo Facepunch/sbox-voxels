@@ -457,7 +457,14 @@ namespace Facepunch.Voxels
 				BlockStates.Add( position, state );
 			}
 
-			state.Deserialize( reader );
+			try
+			{
+				state.Deserialize( reader );
+			}
+			catch ( Exception )
+			{
+				BlockStates.Remove( position );
+			}
 		}
 
 		public void DeserializeBlockStates( BinaryReader reader )
@@ -466,7 +473,20 @@ namespace Facepunch.Voxels
 
 			for ( var i = 0; i < count; i++ )
 			{
-				DeserializeBlockState( reader );
+				var length = reader.ReadInt32();
+				var data = reader.ReadBytes( length );
+
+				try
+				{
+					BinaryHelper.Deserialize( data, r =>
+					{
+						DeserializeBlockState( r );
+					} );
+				}
+				catch ( Exception )
+				{
+					
+				}
 			}
 		}
 
@@ -495,11 +515,17 @@ namespace Facepunch.Voxels
 
 			foreach ( var kv in BlockStates )
 			{
-				var position = kv.Key;
-				writer.Write( (byte)position.x );
-				writer.Write( (byte)position.y );
-				writer.Write( (byte)position.z );
-				kv.Value.Serialize( writer );
+				var data = BinaryHelper.Serialize( w =>
+				{
+					SerializeBlockState( kv.Key, kv.Value, writer );
+				} );
+
+				writer.Write( data.Length );
+
+				if ( data.Length > 0 )
+				{
+					writer.Write( data );
+				}
 			}
 		}
 
@@ -998,11 +1024,26 @@ namespace Facepunch.Voxels
 						foreach ( var position in DirtyBlockStates )
 						{
 							var state = GetState<BlockState>( position );
-							if ( state == null ) continue;
-							writer.Write( (byte)position.x );
-							writer.Write( (byte)position.y );
-							writer.Write( (byte)position.z );
-							state.Serialize( writer );
+
+							if ( state.IsValid() )
+							{
+								var data = BinaryHelper.Serialize( w =>
+								{
+									SerializeBlockState( position, state, writer );
+								} );
+
+								writer.Write( data.Length );
+
+								if ( data.Length > 0 )
+								{
+									writer.Write( data );
+								}
+							}
+							else
+							{
+								writer.Write( 0 );
+							}
+
 							state.IsDirty = false;
 						}
 
