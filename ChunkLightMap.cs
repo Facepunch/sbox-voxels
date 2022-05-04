@@ -115,7 +115,12 @@ namespace Facepunch.Voxels
 
 			if ( IsClient )
 			{
-				Texture.Update3D( Data, position.x, position.y, position.z, 1, 1, 1 );
+				var data = new byte[4];
+				data[0] = Data[index + 0];
+				data[1] = Data[index + 1];
+				data[2] = Data[index + 2];
+				data[3] = Data[index + 3];
+				Texture.Update3D( data, position.x, position.y, position.z, 1, 1, 1 );
 			}
 
 			return true;
