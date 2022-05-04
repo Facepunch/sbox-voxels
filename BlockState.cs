@@ -22,7 +22,7 @@ namespace Facepunch.Voxels
 			{
 				if ( InternalHealth != value )
 				{
-					Chunk.LightMap.SetBlockDamage( LocalPosition, 100 - value );
+					Chunk.LightMap.SetBlockDamage( LocalPosition, (byte)(100 - value) );
 					InternalHealth = value;
 				}
 			}
