@@ -97,7 +97,7 @@ namespace Facepunch.Voxels
 		{
 			var index = ToIndex( position, 2 );
 			if ( !IsInBounds( index ) ) return 0;
-			return (byte)(PendingData[index] & 0xF);
+			return (byte)(PendingData[index] & 0x7f);
 		}
 
 		public bool SetHealth( IntVector3 position, byte value )
@@ -108,18 +108,20 @@ namespace Facepunch.Voxels
 			if ( !IsInBounds( index ) ) return false;
 			if ( GetHealth( position ) == value ) return false;
 
-			PendingData[index] = (byte)((PendingData[index] & 0xF0) | (value & 0xF));
+			PendingData[index] = (byte)((value & 0x7f) | PendingData[index] & 0x80);
 			PendingData[otherIndex] |= 0x40;
 			Data[index] = PendingData[index];
 			Data[otherIndex] = PendingData[otherIndex];
 
 			if ( IsClient )
 			{
+				var baseIndex = ToIndex( position, 0 );
 				var data = new byte[4];
-				data[0] = Data[index + 0];
-				data[1] = Data[index + 1];
-				data[2] = Data[index + 2];
-				data[3] = Data[index + 3];
+				data[0] = Data[baseIndex + 0];
+				data[1] = Data[baseIndex + 1];
+				data[2] = Data[baseIndex + 2];
+				data[3] = Data[baseIndex + 3];
+
 				Texture.Update3D( data, position.x, position.y, position.z, 1, 1, 1 );
 			}
 
