@@ -61,6 +61,7 @@ namespace Facepunch.Voxels
 		public virtual void OnCreated()
 		{
 			Chunk.LightMap.SetBlockDamage( LocalPosition, 0 );
+			Health = 100;
 		}
 
 		public virtual void OnRemoved()
