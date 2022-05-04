@@ -435,9 +435,17 @@ namespace Facepunch.Voxels
 
 		public void DeserializeBlockState( BinaryReader reader )
 		{
+			var isValid = reader.ReadBoolean();
 			var x = reader.ReadByte();
 			var y = reader.ReadByte();
 			var z = reader.ReadByte();
+			var position = new IntVector3( x, y, z );
+
+			if ( !isValid )
+			{
+				RemoveState( position );
+				return;
+			}
 
 			if ( !IsInside( x, y, z ) )
 			{
@@ -447,13 +455,13 @@ namespace Facepunch.Voxels
 			var blockIndex = GetLocalPositionIndex( x, y, z );
 			var blockId = Blocks[blockIndex];
 			var block = World.GetBlockType( blockId );
-			var position = new IntVector3( x, y, z );
 
 			if ( !BlockStates.TryGetValue( position, out var state ) )
 			{
 				state = block.CreateState();
 				state.Chunk = this;
 				state.LocalPosition = position;
+				state.OnCreated();
 				BlockStates.Add( position, state );
 			}
 
@@ -490,6 +498,7 @@ namespace Facepunch.Voxels
 
 		public void SerializeBlockState( IntVector3 position, BlockState state, BinaryWriter writer )
 		{
+			writer.Write( true );
 			writer.Write( (byte)position.x );
 			writer.Write( (byte)position.y );
 			writer.Write( (byte)position.z );
@@ -529,6 +538,7 @@ namespace Facepunch.Voxels
 			state = block.CreateState();
 			state.Chunk = this;
 			state.LocalPosition = position;
+			state.OnCreated();
 			BlockStates.Add( position, state );
 
 			state.IsDirty = true;
@@ -542,6 +552,21 @@ namespace Facepunch.Voxels
 				return data as T;
 			else
 				return null;
+		}
+
+		public void RemoveState( IntVector3 position )
+		{
+			if ( BlockStates.ContainsKey( position ) )
+			{
+				if ( IsServer )
+				{
+					DirtyBlockStates.Add( position );
+				}
+
+				var state = BlockStates[position];
+				state.OnRemoved();
+				BlockStates.Remove( position );
+			}
 		}
 
 		public void SetState<T>( IntVector3 position, T state ) where T : BlockState
@@ -996,7 +1021,7 @@ namespace Facepunch.Voxels
 				{
 					using ( var writer = new BinaryWriter( stream ) )
 					{
-						writer.Write( DirtyBlockStates.Count( p => GetState<BlockState>( p ).IsValid() ) );
+						writer.Write( DirtyBlockStates.Count );
 
 						foreach ( var position in DirtyBlockStates )
 						{
@@ -1006,6 +1031,13 @@ namespace Facepunch.Voxels
 							{
 								SerializeBlockState( position, state, writer );
 								state.IsDirty = false;
+							}
+							else
+							{
+								writer.Write( false );
+								writer.Write( (byte)position.x );
+								writer.Write( (byte)position.y );
+								writer.Write( (byte)position.y );
 							}
 						}
 
@@ -1068,7 +1100,7 @@ namespace Facepunch.Voxels
 
 			foreach ( var kv in statesToTick )
 			{
-				kv.Value.Tick( kv.Key );
+				kv.Value.Tick();
 			}
 		}
 
