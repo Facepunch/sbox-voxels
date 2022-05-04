@@ -6,6 +6,10 @@ namespace Facepunch.Voxels
 {
 	public class BlockState : IValid
 	{
+		public virtual bool ShouldTick => false;
+		public virtual float TickRate => 1f;
+
+		public TimeSince LastTickTime { get; set; }
 		public byte Health { get; set; }
 		public Chunk Chunk { get; set; }
 		public IntVector3 LocalPosition { get; set; }
@@ -28,6 +32,11 @@ namespace Facepunch.Voxels
 		}
 
 		public bool IsValid => true;
+
+		public virtual void Tick( IntVector3 position )
+		{
+
+		}
 
 		public virtual void Serialize( BinaryWriter writer )
 		{

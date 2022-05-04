@@ -1063,6 +1063,13 @@ namespace Facepunch.Voxels
 		private void Tick()
 		{
 			UpdateShapeDeleteQueue();
+
+			var statesToTick = BlockStates.Where( kv => kv.Value.ShouldTick && kv.Value.LastTickTime >= kv.Value.TickRate );
+
+			foreach ( var kv in statesToTick )
+			{
+				kv.Value.Tick( kv.Key );
+			}
 		}
 
 		private bool AreAdjacentChunksUpdating()
