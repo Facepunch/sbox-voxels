@@ -113,11 +113,9 @@ namespace Facepunch.Voxels
 			Data[index] = PendingData[index];
 			Data[otherIndex] = PendingData[otherIndex];
 
-			Log.Info( "Set Health To: " + position + " / " + value );
-
 			if ( IsClient )
 			{
-				Texture.Update( Data );
+				Texture.Update3D( Data, position.x, position.y, position.z, 1, 1, 1 );
 			}
 
 			return true;
