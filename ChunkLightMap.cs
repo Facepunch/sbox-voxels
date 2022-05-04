@@ -17,6 +17,7 @@ namespace Facepunch.Voxels
 		public int ChunkSizeX;
 		public int ChunkSizeY;
 		public int ChunkSizeZ;
+		public byte[] PendingData;
 		public byte[] Data;
 
 		public ConcurrentQueue<LightRemoveNode>[] TorchLightRemoveQueue { get; private set; }
@@ -44,6 +45,7 @@ namespace Facepunch.Voxels
 			Chunk = chunk;
 			VoxelWorld = world;
 			IsDirty = true;
+			PendingData = new byte[ChunkSizeX * ChunkSizeY * ChunkSizeZ * 4];
 			Data = new byte[ChunkSizeX * ChunkSizeY * ChunkSizeZ * 4];
 
 			if ( IsClient )
@@ -66,12 +68,12 @@ namespace Facepunch.Voxels
 
 		public void Serialize( BinaryWriter writer )
 		{
-			writer.Write( Data );
+			writer.Write( PendingData );
 		}
 
 		public void Deserialize( BinaryReader reader )
 		{
-			Data = reader.ReadBytes( Data.Length );
+			PendingData = reader.ReadBytes( PendingData.Length );
 		}
 
 		public int ToIndex( IntVector3 position, int component )
@@ -88,7 +90,37 @@ namespace Facepunch.Voxels
 		{
 			var index = ToIndex( position, 1 );
 			if ( !IsInBounds( index ) ) return 0;
-			return (byte)((Data[index] >> 4) & 0xF);
+			return (byte)((PendingData[index] >> 4) & 0xF);
+		}
+
+		public byte GetHealth( IntVector3 position )
+		{
+			var index = ToIndex( position, 2 );
+			if ( !IsInBounds( index ) ) return 0;
+			return (byte)(PendingData[index] & 0xF);
+		}
+
+		public bool SetHealth( IntVector3 position, byte value )
+		{
+			var index = ToIndex( position, 2 );
+			var otherIndex = ToIndex( position, 3 );
+
+			if ( !IsInBounds( index ) ) return false;
+			if ( GetHealth( position ) == value ) return false;
+
+			PendingData[index] = (byte)((PendingData[index] & 0xF0) | (value & 0xF));
+			PendingData[otherIndex] |= 0x40;
+			Data[index] = PendingData[index];
+			Data[otherIndex] = PendingData[otherIndex];
+
+			Log.Info( "Set Health To: " + position + " / " + value );
+
+			if ( IsClient )
+			{
+				Texture.Update( Data );
+			}
+
+			return true;
 		}
 
 		public bool SetSunLight( IntVector3 position, byte value )
@@ -97,8 +129,8 @@ namespace Facepunch.Voxels
 			if ( !IsInBounds( index ) ) return false;
 			if ( GetSunLight( position ) == value ) return false;
 			IsDirty = true;
-			Data[index] = (byte)((Data[index] & 0x0F) | ((value & 0xf) << 4));
-			Data[ToIndex( position, 3 )] |= 0x40;
+			PendingData[index] = (byte)((PendingData[index] & 0x0F) | ((value & 0xf) << 4));
+			PendingData[ToIndex( position, 3 )] |= 0x40;
 			return true;
 		}
 
@@ -346,9 +378,10 @@ namespace Facepunch.Voxels
 
 		public bool UpdateTexture( bool forceUpdate = false )
 		{
-			if ( IsClient && ( IsDirty || forceUpdate ) )
+			if ( IsClient && (IsDirty || forceUpdate) )
 			{
-				Texture.Update( Data );
+				Array.Copy( PendingData, Data, Data.Length );
+				Texture.Update( PendingData );
 				IsDirty = false;
 				return true;
 			}
@@ -415,7 +448,7 @@ namespace Facepunch.Voxels
 		{
 			var index = ToIndex( position, 0 );
 			if ( !IsInBounds( index ) ) return 0;
-			return (byte)(Data[index] & 0xF);
+			return (byte)(PendingData[index] & 0xF);
 		}
 
 		public bool SetRedTorchLight( IntVector3 position, byte value )
@@ -424,8 +457,8 @@ namespace Facepunch.Voxels
 			if ( !IsInBounds( index ) ) return false;
 			if ( GetRedTorchLight( position ) == value ) return false;
 			IsDirty = true;
-			Data[index] = (byte)((Data[index] & 0xF0) | (value & 0xF));
-			Data[ToIndex( position, 3 )] |= 0x40;
+			PendingData[index] = (byte)((PendingData[index] & 0xF0) | (value & 0xF));
+			PendingData[ToIndex( position, 3 )] |= 0x40;
 			return true;
 		}
 
@@ -433,7 +466,7 @@ namespace Facepunch.Voxels
 		{
 			var index = ToIndex( position, 0 );
 			if ( !IsInBounds( index ) ) return 0;
-			return (byte)((Data[index] >> 4) & 0xF);
+			return (byte)((PendingData[index] >> 4) & 0xF);
 		}
 
 		public bool SetGreenTorchLight( IntVector3 position, byte value )
@@ -442,8 +475,8 @@ namespace Facepunch.Voxels
 			if ( !IsInBounds( index ) ) return false;
 			if ( GetGreenTorchLight( position ) == value ) return false;
 			IsDirty = true;
-			Data[index] = (byte)((Data[index] & 0x0F) | (value << 4));
-			Data[ToIndex( position, 3 )] |= 0x40;
+			PendingData[index] = (byte)((PendingData[index] & 0x0F) | (value << 4));
+			PendingData[ToIndex( position, 3 )] |= 0x40;
 			return true;
 		}
 
@@ -451,7 +484,7 @@ namespace Facepunch.Voxels
 		{
 			var index = ToIndex( position, 1 );
 			if ( !IsInBounds( index ) ) return 0;
-			return (byte)(Data[index] & 0xF);
+			return (byte)(PendingData[index] & 0xF);
 		}
 
 		public bool SetBlueTorchLight( IntVector3 position, byte value )
@@ -460,8 +493,8 @@ namespace Facepunch.Voxels
 			if ( !IsInBounds( index ) ) return false;
 			if ( GetBlueTorchLight( position ) == value ) return false;
 			IsDirty = true;
-			Data[index] = (byte)((Data[index] & 0xF0) | (value & 0xF));
-			Data[ToIndex( position, 3 )] |= 0x40;
+			PendingData[index] = (byte)((Data[index] & 0xF0) | (value & 0xF));
+			PendingData[ToIndex( position, 3 )] |= 0x40;
 			return true;
 		}
 
