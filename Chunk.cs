@@ -564,14 +564,34 @@ namespace Facepunch.Voxels
 				}
 
 				var state = BlockStates[position];
-				state.OnRemoved();
+
+				if ( state.IsValid() )
+				{
+					state.OnRemoved();
+				}
+
 				BlockStates.Remove( position );
 			}
 		}
 
 		public void SetState<T>( IntVector3 position, T state ) where T : BlockState
 		{
-			BlockStates[position] = state;
+			if ( BlockStates.TryGetValue( position, out var oldState ) )
+			{
+				if ( oldState == state ) return;
+
+				if ( oldState.IsValid() )
+				{
+					oldState.OnRemoved();
+				}
+			}
+
+			if ( state.IsValid() )
+				BlockStates[position] = state;
+			else
+				BlockStates.Remove( position );
+
+			DirtyBlockStates.Add( position );
 		}
 
 		public int GetLocalPositionIndex( int x, int y, int z )
@@ -1096,7 +1116,11 @@ namespace Facepunch.Voxels
 		{
 			UpdateShapeDeleteQueue();
 
-			var statesToTick = BlockStates.Where( kv => kv.Value.ShouldTick && kv.Value.LastTickTime >= kv.Value.TickRate );
+			var statesToTick = BlockStates.Where( kv =>
+			{
+				var state = kv.Value;
+				return state.IsValid() && state.ShouldTick && state.LastTickTime >= state.TickRate;
+			} );
 
 			foreach ( var kv in statesToTick )
 			{
