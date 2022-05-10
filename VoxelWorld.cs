@@ -1425,7 +1425,7 @@ namespace Facepunch.Voxels
 		public BlockFace Trace( Vector3 position, Vector3 direction, float length, out IntVector3 hitPosition, out float distance )
 		{
 			hitPosition = new IntVector3( 0, 0, 0 );
-			distance = 0;
+			distance = 0f;
 
 			if ( direction.Length <= 0.0f )
 			{
@@ -1445,7 +1445,7 @@ namespace Facepunch.Voxels
 				direction.z < 0 ? (int)BlockFace.Top : (int)BlockFace.Bottom );
 
 			Vector3 position3f = position;
-			distance = 0;
+			distance = 0f;
 			Ray ray = new( position, direction );
 
 			var currentIterations = 0;
