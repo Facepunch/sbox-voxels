@@ -324,6 +324,11 @@ namespace Facepunch.Voxels
 			BiomeSampler = new BiomeSampler( this );
 		}
 
+		public bool IsBelowBounds( IntVector3 position )
+		{
+			return position.z < 0;
+		}
+
 		public bool IsInBounds( IntVector3 position )
 		{
 			if ( position.x >= 0 && position.y >= 0 && position.z >= 0 )

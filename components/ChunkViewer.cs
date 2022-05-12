@@ -52,7 +52,18 @@ namespace Facepunch.Voxels
 			TimeSinceLastReset = 0f;
 		}
 
-		public bool IsInMapBounds()
+		public bool IsBelowWorld()
+		{
+			if ( Entity is Client client && client.Pawn.IsValid() )
+			{
+				var voxelPosition = VoxelWorld.Current.ToVoxelPosition( client.Pawn.Position );
+				return VoxelWorld.Current.IsBelowBounds( voxelPosition );
+			}
+
+			return false;
+		}
+
+		public bool IsInWorld()
 		{
 			if ( Entity is Client client && client.Pawn.IsValid() )
 			{
