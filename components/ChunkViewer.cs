@@ -40,6 +40,8 @@ namespace Facepunch.Voxels
 		public Queue<IntVector3> ChunkSendQueue { get; private set; }
 		public TimeSince TimeSinceLastReset { get; private set; }
 
+		private TimeUntil NextUpdateTime { get; set; }
+
 		public bool IsValid => Entity.IsValid();
 
 		public void Reset()
@@ -50,6 +52,7 @@ namespace Facepunch.Voxels
 			ChunkSendQueue.Clear();
 			IsCurrentChunkReady = false;
 			TimeSinceLastReset = 0f;
+			NextUpdateTime = 0f;
 		}
 
 		public bool IsBelowWorld()
@@ -113,6 +116,7 @@ namespace Facepunch.Voxels
 		public void Update()
 		{
 			if ( Entity is not Client client ) return;
+			if ( !NextUpdateTime ) return;
 
 			var pawn = client.Pawn;
 			if ( !pawn.IsValid() ) return;
@@ -222,6 +226,8 @@ namespace Facepunch.Voxels
 
 				ChunksToRemove.Clear();
 			}
+
+			NextUpdateTime = 0.5f;
 		}
 
 		protected override void OnActivate()
