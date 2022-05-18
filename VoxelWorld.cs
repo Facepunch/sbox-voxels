@@ -850,14 +850,17 @@ namespace Facepunch.Voxels
 			TranslucentMaterial = translucentMaterialName;
 		}
 
-		public bool SetBlockInDirection( Vector3 origin, Vector3 direction, byte blockId, bool checkSourceCollision = false, float distance = 10000f, Func<IntVector3, bool> condition = null )
+		public bool SetBlockInDirection( Vector3 origin, Vector3 direction, byte blockId, out IntVector3 position, bool checkSourceCollision = false, float distance = 10000f, Func<IntVector3, bool> condition = null )
 		{
 			var face = Trace( origin * (1.0f / VoxelSize), direction.Normal, distance, out var endPosition, out _ );
 
 			if ( face == BlockFace.Invalid )
+			{
+				position = IntVector3.Zero;
 				return false;
+			}
 
-			var position = blockId != 0 ? GetAdjacentPosition( endPosition, (int)face ) : endPosition;
+			position = blockId != 0 ? GetAdjacentPosition( endPosition, (int)face ) : endPosition;
 
 			if ( checkSourceCollision )
 			{
@@ -874,6 +877,11 @@ namespace Facepunch.Voxels
 
 			SetBlockOnServer( position.x, position.y, position.z, blockId, (int)face );
 			return true;
+		}
+
+		public bool SetBlockInDirection( Vector3 origin, Vector3 direction, byte blockId, bool checkSourceCollision = false, float distance = 10000f, Func<IntVector3, bool> condition = null )
+		{
+			return SetBlockInDirection( origin, direction, blockId, out _, checkSourceCollision, distance, condition );
 		}
 
 		public bool GetBlockInDirection( Vector3 origin, Vector3 direction, out IntVector3 position, float distance = 10000f )
