@@ -2,7 +2,6 @@
 
 namespace Facepunch.Voxels
 {
-	[Hammer.Skip]
 	public class BlockEntity : ModelEntity
 	{
 		public IntVector3 LocalBlockPosition { get; set; }

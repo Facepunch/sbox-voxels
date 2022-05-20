@@ -5,6 +5,8 @@ namespace Facepunch.Voxels
 {
 	public class AirBlock : BlockType
 	{
+		public AirBlock() { }
+
 		public AirBlock( VoxelWorld world )
 		{
 			World = world;

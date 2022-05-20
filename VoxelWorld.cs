@@ -92,7 +92,7 @@ namespace Facepunch.Voxels
 					{
 						var id = reader.ReadByte();
 						var name = reader.ReadString();
-						var type = Library.Create<BlockType>( name );
+						var type = TypeLibrary.Create<BlockType>( name );
 
 						type.Initialize();
 
@@ -108,7 +108,7 @@ namespace Facepunch.Voxels
 					{
 						var biomeId = reader.ReadByte();
 						var biomeLibraryId = reader.ReadInt32();
-						var biome = Library.TryCreate<Biome>( biomeLibraryId );
+						var biome = TypeLibrary.Create<Biome>( biomeLibraryId );
 						biome.Id = biomeId;
 						biome.VoxelWorld = Current;
 						biome.Initialize();
@@ -400,7 +400,7 @@ namespace Facepunch.Voxels
 			
 			if ( IsServer && ChunkGeneratorType != null )
 			{
-				var generator = Library.Create<ChunkGenerator>( ChunkGeneratorType );
+				var generator = TypeLibrary.Create<ChunkGenerator>( ChunkGeneratorType );
 				generator.Setup( this, chunk );
 				chunk.Generator = generator;
 			}
@@ -460,7 +460,7 @@ namespace Facepunch.Voxels
 
 		public T AddBiome<T>() where T : Biome
 		{
-			var biome = Library.Create<T>( typeof( T ) );
+			var biome = TypeLibrary.Create<T>( typeof( T ) );
 			biome.Id = NextAvailableBiomeId++;
 			biome.VoxelWorld = this;
 			biome.Initialize();
@@ -518,9 +518,9 @@ namespace Facepunch.Voxels
 
 					foreach ( var kv in BiomeLookup )
 					{
-						var attribute = Library.GetAttribute( kv.Value.GetType() );
+						var description = TypeLibrary.GetDescription( kv.Value.GetType() );
 						writer.Write( kv.Key );
-						writer.Write( attribute.Identifier );
+						writer.Write( description.Identity );
 					}
 				}
 
@@ -676,7 +676,7 @@ namespace Facepunch.Voxels
 										BinaryHelper.Deserialize( entityData, r =>
 										{
 											var libraryName = r.ReadString();
-											var entity = Library.Create<ISourceEntity>( libraryName );
+											var entity = TypeLibrary.Create<ISourceEntity>( libraryName );
 											entity.Position = r.ReadVector3();
 											entity.Rotation = r.ReadRotation();
 											entity.Deserialize( r );
@@ -798,9 +798,9 @@ namespace Facepunch.Voxels
 							var entityData = BinaryHelper.Serialize( w =>
 							{
 								var entity = entities[i];
-								var libraryName = Library.GetAttribute( entity.GetType() ).Name;
+								var className = TypeLibrary.GetDescription( entity.GetType() ).ClassName;
 
-								w.Write( libraryName );
+								w.Write( className );
 								w.Write( entity.Position );
 								w.Write( entity.Rotation );
 
@@ -986,9 +986,9 @@ namespace Facepunch.Voxels
 			if ( BlockAtlas == null )
 				throw new Exception( "Unable to add any block types with no loaded block atlas!" );
 
-			foreach ( var type in Library.GetAll<BlockType>() )
+			foreach ( var type in TypeLibrary.GetTypes<BlockType>() )
 			{
-				AddBlockType( Library.Create<BlockType>( type ) );
+				AddBlockType( TypeLibrary.Create<BlockType>( type ) );
 			}
 		}
 
@@ -1373,7 +1373,7 @@ namespace Facepunch.Voxels
 
 			if ( !string.IsNullOrEmpty( entityName ) )
 			{
-				var entity = Library.Create<BlockEntity>( entityName );
+				var entity = TypeLibrary.Create<BlockEntity>( entityName );
 				entity.BlockType = block;
 				chunk.SetEntity( localPosition, entity );
 			}

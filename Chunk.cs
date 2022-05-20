@@ -209,7 +209,7 @@ namespace Facepunch.Voxels
 
 			if ( !string.IsNullOrEmpty( entityName ) )
 			{
-				var entity = Library.Create<BlockEntity>( entityName );
+				var entity = TypeLibrary.Create<BlockEntity>( entityName );
 				entity.BlockType = block;
 				SetEntity( localPosition, entity );
 			}
@@ -652,7 +652,7 @@ namespace Facepunch.Voxels
 
 						if ( !string.IsNullOrEmpty( entityName ) )
 						{
-							var entity = Library.Create<BlockEntity>( entityName );
+							var entity = TypeLibrary.Create<BlockEntity>( entityName );
 							var position = new IntVector3( x, y, z );
 							entity.BlockType = block;
 							SetEntity( position, entity );
