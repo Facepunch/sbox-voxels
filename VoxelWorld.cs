@@ -988,6 +988,9 @@ namespace Facepunch.Voxels
 
 			foreach ( var type in TypeLibrary.GetTypes<BlockType>() )
 			{
+				if ( type == typeof( BlockType ) || type == typeof( AirBlock ) )
+					continue;
+
 				AddBlockType( TypeLibrary.Create<BlockType>( type ) );
 			}
 		}
@@ -1463,7 +1466,7 @@ namespace Facepunch.Voxels
 
 			var currentIterations = 0;
 
-			while ( currentIterations < 1000 )
+			while ( currentIterations < 10000 )
 			{
 				currentIterations++;
 
@@ -1518,6 +1521,8 @@ namespace Facepunch.Voxels
 
 				if ( blockId != 0 )
 				{
+					Log.Info( blockId );
+					Log.Info( "Hit: " + GetBlockType( blockId ).FriendlyName );
 					hitPosition = position3i;
 					return lastFace;
 				}
@@ -1527,7 +1532,8 @@ namespace Facepunch.Voxels
 			float distanceHit = 0;
 			var traceHitPos = plane.Trace( ray, true );
 
-			if ( traceHitPos.HasValue ) distanceHit = Vector3.DistanceBetween( position, traceHitPos.Value );
+			if ( traceHitPos.HasValue )
+				distanceHit = Vector3.DistanceBetween( position, traceHitPos.Value );
 
 			if ( distanceHit >= 0.0f && distanceHit <= length )
 			{
