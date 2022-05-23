@@ -1521,8 +1521,6 @@ namespace Facepunch.Voxels
 
 				if ( blockId != 0 )
 				{
-					Log.Info( blockId );
-					Log.Info( "Hit: " + GetBlockType( blockId ).FriendlyName );
 					hitPosition = position3i;
 					return lastFace;
 				}
