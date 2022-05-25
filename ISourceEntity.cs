@@ -14,6 +14,7 @@ namespace Facepunch.Voxels
 		Transform Transform { get; set; }
 		void Serialize( BinaryWriter writer );
 		void Deserialize( BinaryReader reader );
+		void ResetInterpolation();
 	}
 }
 
