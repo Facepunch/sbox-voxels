@@ -532,6 +532,9 @@ namespace Facepunch.Voxels
 			if ( BlockStates.TryGetValue( position, out var state ) )
 				return state as T;
 
+			if ( !IsInside( position ) )
+				return null;
+
 			var blockId = GetLocalPositionBlock( position );
 			var block = VoxelWorld.Current.GetBlockType( blockId );
 
