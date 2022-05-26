@@ -823,6 +823,24 @@ namespace Facepunch.Voxels
 			}
 		}
 
+		public IntVector3 GetPositionMaxs( IntVector3 mins, IntVector3 maxs )
+		{
+			var maxX = Math.Max( mins.x, maxs.x );
+			var maxY = Math.Max( mins.y, maxs.y );
+			var maxZ = Math.Max( mins.z, maxs.z );
+
+			return new IntVector3( maxX, maxY, maxZ );
+		}
+
+		public IntVector3 GetPositionMins( IntVector3 mins, IntVector3 maxs )
+		{
+			var minX = Math.Min( mins.x, maxs.x );
+			var minY = Math.Min( mins.y, maxs.y );
+			var minZ = Math.Min( mins.z, maxs.z );
+
+			return new IntVector3( minX, minY, minZ );
+		}
+
 		public IEnumerable<IntVector3> GetPositionsInBox( IntVector3 mins, IntVector3 maxs )
 		{
 			var minX = Math.Min( mins.x, maxs.x );
