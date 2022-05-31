@@ -1068,7 +1068,7 @@ namespace Facepunch.Voxels
 			if ( !chunk.IsValid() ) return;
 
 			var localPosition = ToLocalPosition( position );
-			chunk.SetState<T>( localPosition, state );
+			chunk.SetState( localPosition, state );
 		}
 
 		public T GetState<T>( IntVector3 position ) where T : BlockState

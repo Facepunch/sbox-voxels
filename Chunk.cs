@@ -436,9 +436,9 @@ namespace Facepunch.Voxels
 		public void DeserializeBlockState( BinaryReader reader )
 		{
 			var isValid = reader.ReadBoolean();
-			var x = reader.ReadByte();
-			var y = reader.ReadByte();
-			var z = reader.ReadByte();
+			var x = reader.ReadInt32();
+			var y = reader.ReadInt32();
+			var z = reader.ReadInt32();
 			var position = new IntVector3( x, y, z );
 
 			if ( !isValid )
@@ -499,9 +499,9 @@ namespace Facepunch.Voxels
 		public void SerializeBlockState( IntVector3 position, BlockState state, BinaryWriter writer )
 		{
 			writer.Write( true );
-			writer.Write( (byte)position.x );
-			writer.Write( (byte)position.y );
-			writer.Write( (byte)position.z );
+			writer.Write( position.x );
+			writer.Write( position.y );
+			writer.Write( position.z );
 			state.Serialize( writer );
 		}
 
@@ -1058,9 +1058,9 @@ namespace Facepunch.Voxels
 							else
 							{
 								writer.Write( false );
-								writer.Write( (byte)position.x );
-								writer.Write( (byte)position.y );
-								writer.Write( (byte)position.y );
+								writer.Write( position.x );
+								writer.Write( position.y );
+								writer.Write( position.z );
 							}
 						}
 
