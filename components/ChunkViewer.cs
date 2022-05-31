@@ -190,26 +190,31 @@ namespace Facepunch.Voxels
 					using ( var writer = new BinaryWriter( stream ) )
 					{
 						var unloadedChunks = ChunksToSend.Where( c => !IsChunkLoaded( c.Offset ) && c.Initialized && c.HasGenerated );
-						writer.Write( unloadedChunks.Count() );
+						var totalChunks = unloadedChunks.Count();
 
-						foreach ( var chunk in unloadedChunks )
+						if ( totalChunks > 0 )
 						{
-							writer.Write( chunk.Offset.x );
-							writer.Write( chunk.Offset.y );
-							writer.Write( chunk.Offset.z );
-							writer.Write( chunk.HasOnlyAirBlocks );
+							writer.Write( totalChunks );
 
-							if ( !chunk.HasOnlyAirBlocks )
-								writer.Write( chunk.Blocks );
+							foreach ( var chunk in unloadedChunks )
+							{
+								writer.Write( chunk.Offset.x );
+								writer.Write( chunk.Offset.y );
+								writer.Write( chunk.Offset.z );
+								writer.Write( chunk.HasOnlyAirBlocks );
 
-							chunk.LightMap.Serialize( writer );
-							chunk.SerializeBlockStates( writer );
+								if ( !chunk.HasOnlyAirBlocks )
+									writer.Write( chunk.Blocks );
 
-							LoadedChunks.Add( chunk.Offset );
+								chunk.LightMap.Serialize( writer );
+								chunk.SerializeBlockStates( writer );
+
+								LoadedChunks.Add( chunk.Offset );
+							}
+
+							var compressed = CompressionHelper.Compress( stream.ToArray() );
+							VoxelWorld.ReceiveChunks( To.Single( client ), compressed );
 						}
-
-						var compressed = CompressionHelper.Compress( stream.ToArray() );
-						VoxelWorld.ReceiveChunks( To.Single( client ), compressed );
 					}
 				}
 
