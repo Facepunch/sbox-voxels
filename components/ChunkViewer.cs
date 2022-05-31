@@ -189,7 +189,7 @@ namespace Facepunch.Voxels
 				{
 					using ( var writer = new BinaryWriter( stream ) )
 					{
-						var unloadedChunks = ChunksToSend.Where( c => !IsChunkLoaded( c.Offset ) && c.Initialized && c.HasGenerated );
+						var unloadedChunks = ChunksToSend.Where( c => !IsChunkLoaded( c.Offset ) && c.Initialized && c.HasGenerated ).Take( 16 ).ToArray();
 						var totalChunks = unloadedChunks.Count();
 
 						if ( totalChunks > 0 )
@@ -210,6 +210,7 @@ namespace Facepunch.Voxels
 								chunk.SerializeBlockStates( writer );
 
 								LoadedChunks.Add( chunk.Offset );
+								ChunksToSend.Remove( chunk );
 							}
 
 							var compressed = CompressionHelper.Compress( stream.ToArray() );

@@ -187,6 +187,8 @@ namespace Facepunch.Voxels
 			var block = World.GetBlockType( blockId );
 
 			SetBlock( localPosition, blockId );
+			RemoveState( localPosition );
+
 			block.OnBlockAdded( this, position, (int)BlockFace.Top );
 
 			for ( var i = 0; i < 5; i++ )
@@ -438,6 +440,7 @@ namespace Facepunch.Voxels
 			var x = reader.ReadInt32();
 			var y = reader.ReadInt32();
 			var z = reader.ReadInt32();
+			var blockId = reader.ReadByte();
 			var position = new IntVector3( x, y, z );
 
 			if ( !isValid )
@@ -448,30 +451,45 @@ namespace Facepunch.Voxels
 
 			if ( !IsInside( x, y, z ) )
 			{
-				throw new Exception( $"Tried to deserialize a block state for a block outside of the world bounds ({x}, {y}, {z})!" );
+				throw new Exception( $"Tried to deserialize a block state for a block outside of the chunk bounds ({x}, {y}, {z})!" );
 			}
 
-			var blockIndex = GetLocalPositionIndex( x, y, z );
-			var blockId = Blocks[blockIndex];
+			var isNewState = false;
 			var block = World.GetBlockType( blockId );
+			var state = block.CreateState();
 
-			if ( !BlockStates.TryGetValue( position, out var state ) )
+			if ( BlockStates.TryGetValue( position, out var oldState ) )
 			{
-				state = block.CreateState();
-				state.Chunk = this;
-				state.LocalPosition = position;
+				if ( oldState.GetType() != state.GetType() )
+				{
+					isNewState = true;
+					oldState.OnRemoved();
+				}
+				else
+				{
+					state = oldState;
+				}
+			}
+
+			state.Chunk = this;
+			state.BlockId = blockId;
+			state.LocalPosition = position;
+
+			if ( isNewState )
+			{
 				state.OnCreated();
-				BlockStates.Add( position, state );
+				BlockStates[position] = state;
 			}
 
 			try
 			{
 				state.Deserialize( reader );
 			}
-			catch ( Exception )
+			catch ( Exception e )
 			{
 				BlockStates.Remove( position );
-			}
+				Log.Error( e.StackTrace );
+			} 
 		}
 
 		public void DeserializeBlockStates( BinaryReader reader )
@@ -497,10 +515,12 @@ namespace Facepunch.Voxels
 
 		public void SerializeBlockState( IntVector3 position, BlockState state, BinaryWriter writer )
 		{
+			var blockId = GetLocalPositionBlock( position );
 			writer.Write( true );
 			writer.Write( position.x );
 			writer.Write( position.y );
 			writer.Write( position.z );
+			writer.Write( blockId );
 			state.Serialize( writer );
 		}
 
@@ -539,6 +559,7 @@ namespace Facepunch.Voxels
 
 			state = block.CreateState();
 			state.Chunk = this;
+			state.BlockId = blockId;
 			state.LocalPosition = position;
 			state.OnCreated();
 			BlockStates.Add( position, state );
@@ -578,6 +599,9 @@ namespace Facepunch.Voxels
 
 		public void SetState<T>( IntVector3 position, T state ) where T : BlockState
 		{
+			if ( !IsInside( position ) )
+				return;
+
 			if ( BlockStates.TryGetValue( position, out var oldState ) )
 			{
 				if ( oldState == state ) return;
@@ -1044,6 +1068,7 @@ namespace Facepunch.Voxels
 								writer.Write( position.x );
 								writer.Write( position.y );
 								writer.Write( position.z );
+								writer.Write( (byte)0 );
 							}
 						}
 

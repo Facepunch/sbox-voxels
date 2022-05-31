@@ -68,12 +68,14 @@ namespace Facepunch.Voxels
 
 		public void Serialize( BinaryWriter writer )
 		{
+			writer.Write( PendingData.Length );
 			writer.Write( PendingData );
 		}
 
 		public void Deserialize( BinaryReader reader )
 		{
-			PendingData = reader.ReadBytes( PendingData.Length );
+			var length = reader.ReadInt32();
+			PendingData = reader.ReadBytes( length );
 		}
 
 		public int ToIndex( IntVector3 position, int component )

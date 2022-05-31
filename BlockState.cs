@@ -28,6 +28,7 @@ namespace Facepunch.Voxels
 			}
 		}
 
+		public byte BlockId { get; set; }
 		public Chunk Chunk { get; set; }
 		public IntVector3 LocalPosition { get; set; }
 
