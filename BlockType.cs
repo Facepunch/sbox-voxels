@@ -8,6 +8,7 @@ namespace Facepunch.Voxels
 		public VoxelWorld World { get; init; }
 		public byte BlockId { get; set; }
 
+		public virtual string Icon => "";
 		public virtual string DefaultTexture => "";
 		public virtual string FriendlyName => "";
 		public virtual bool AttenuatesSunLight => false;
@@ -26,7 +27,6 @@ namespace Facepunch.Voxels
 		public virtual byte GetTextureId( BlockFace face, Chunk chunk, int x, int y, int z )
 		{
 			if ( string.IsNullOrEmpty( DefaultTexture ) ) return 0;
-
 			return World.BlockAtlas.GetTextureId( DefaultTexture );
 		}
 

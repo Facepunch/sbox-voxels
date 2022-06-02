@@ -813,7 +813,7 @@ namespace Facepunch.Voxels
 		{
 			var mapPosition = Offset + position;
 
-			entity.VoxelWorld = World;
+			entity.World = World;
 			entity.Chunk = this;
 			entity.BlockPosition = mapPosition;
 			entity.LocalBlockPosition = position;
