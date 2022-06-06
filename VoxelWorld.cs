@@ -891,6 +891,27 @@ namespace Facepunch.Voxels
 			return (face != BlockFace.Invalid);
 		}
 
+		public IEnumerable<IntVector3> GetBlocksInRadius( IntVector3 position, float radius )
+		{
+			var voxelBlastRadius = (int)(radius / VoxelWorld.Current.VoxelSize);
+
+			for ( var x = -voxelBlastRadius; x <= voxelBlastRadius; ++x )
+			{
+				for ( var y = -voxelBlastRadius; y <= voxelBlastRadius; ++y )
+				{
+					for ( var z = -voxelBlastRadius; z <= voxelBlastRadius; ++z )
+					{
+						var blockPosition = position + new IntVector3( x, y, z );
+
+						if ( position.Distance( blockPosition ) <= voxelBlastRadius )
+						{
+							yield return blockPosition;
+						}
+					}
+				}
+			}
+		}
+
 		public void SetBlockOnServer( IntVector3 position, byte blockId, int direction = 0 )
 		{
 			Host.AssertServer();
