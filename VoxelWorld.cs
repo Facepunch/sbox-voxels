@@ -300,23 +300,6 @@ namespace Facepunch.Voxels
 			CaveNoise.SetFractalOctaves( 2 );
 			CaveNoise.SetFrequency( 1f / 128f );
 
-			if ( IsServer )
-			{
-				var cycle = new DayCycleController
-				{
-					DawnSkyColor = Color.Orange,
-					DaySkyColor = Color.White,
-					NightSkyColor = Color.Black,
-					DuskSkyColor = Color.Orange,
-					DawnColor = Color.Orange,
-					DuskColor = Color.Orange,
-					DayColor = Color.White,
-					NightColor = Color.Black
-				};
-				cycle.Initialize();
-				CachedDayCycle = cycle;
-			}
-
 			NextAvailableBlockId++;
 			Current = this;
 			Seed = seed;
