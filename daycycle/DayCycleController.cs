@@ -1,8 +1,11 @@
 ﻿using Sandbox;
+using SandboxEditor;
 using System.Linq;
 
 namespace Facepunch.Voxels
 {
+	[HammerEntity]
+	[Title( "Day Cycle Controller" )]
 	public partial class DayCycleController : Entity
 	{
 		[Net] public float Brightness { get; set; } = 1f;
@@ -66,8 +69,6 @@ namespace Facepunch.Voxels
 
 			var direction = (Vector3.Zero - environment.Position).Normal;
 			environment.Rotation = Rotation.LookAt( direction, Vector3.Up );
-
-			DebugOverlay.Sphere( environment.Position, 1000f, Color.Red );
 
 			Brightness = BrightnessGradient.Evaluate( (1f / 24f) * TimeOfDay ).a;
 		}
