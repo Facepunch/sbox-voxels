@@ -470,6 +470,10 @@ namespace Facepunch.Voxels
 					state = oldState;
 				}
 			}
+			else
+			{
+				isNewState = true;
+			}
 
 			state.Chunk = this;
 			state.BlockId = blockId;
