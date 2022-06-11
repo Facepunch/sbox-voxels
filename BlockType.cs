@@ -11,6 +11,7 @@ namespace Facepunch.Voxels
 		public virtual string Icon => "";
 		public virtual string DefaultTexture => "";
 		public virtual string FriendlyName => "";
+		public virtual string Description => "";
 		public virtual bool AttenuatesSunLight => false;
 		public virtual bool HasTexture => true;
 		public virtual bool IsPassable => false;
