@@ -229,6 +229,7 @@ namespace Facepunch.Voxels
 		public List<ChunkBlockUpdate> OutgoingBlockUpdates { get; private set; } = new();
 		public Dictionary<byte, Biome> BiomeLookup { get; private set; } = new();
 		public Dictionary<IntVector3, Chunk> Chunks { get; private set; } = new();
+		public bool HasNoDayCycleController { get; private set; } = false;
 		public float GlobalOpacity { get; set; } = 1f;
 		public List<Biome> Biomes { get; private set; } = new();
 
@@ -236,9 +237,11 @@ namespace Facepunch.Voxels
 		{
 			get
 			{
-				if ( !CachedDayCycle.IsValid() )
+				if ( !HasNoDayCycleController && !CachedDayCycle.IsValid() )
 				{
-					CachedDayCycle = Entity.All.OfType<DayCycleController>().FirstOrDefault();
+					var controller = Entity.All.OfType<DayCycleController>().FirstOrDefault();
+					HasNoDayCycleController = !controller.IsValid();
+					CachedDayCycle = controller;
 				}
 
 				return CachedDayCycle;
