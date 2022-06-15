@@ -86,6 +86,7 @@ namespace Facepunch.Voxels
 
 		private ConcurrentQueue<PhysicsShape> ShapesToDelete { get; set; } = new();
 		private Dictionary<int, BlockEntity> Entities { get; set; }
+		private Dictionary<int, List<Entity>> Details { get; set; }
 		private List<QueuedTick> QueuedTicks { get; set; } = new();
 		private Queue<QueuedTick> TicksToRun { get; set; } = new();
 		private bool IsInitializing { get; set; }
@@ -110,6 +111,7 @@ namespace Facepunch.Voxels
 			Bounds = new Vector3( SizeX, SizeY, SizeZ ) * VoxelSize;
 			Blocks = new byte[SizeX * SizeY * SizeZ];
 			Entities = new();
+			Details = new();
 			LightMap = new ChunkLightMap( this, world );
 			Offset = new IntVector3( x, y, z );
 			Body = Map.Physics.Body;
@@ -789,7 +791,16 @@ namespace Facepunch.Voxels
 				kv.Value.Delete();
 			}
 
+			foreach ( var kv in Details )
+			{
+				foreach ( var entity in kv.Value )
+				{
+					entity.Delete();
+				}
+			}
+
 			Entities.Clear();
+			Details.Clear();
 
 			UpdateShapeDeleteQueue();
 
@@ -804,6 +815,15 @@ namespace Facepunch.Voxels
 			Event.Unregister( this );
 		}
 
+		public List<Entity> GetDetails( IntVector3 position )
+		{
+			var index = GetLocalPositionIndex( position );
+			if ( Details.TryGetValue( index, out var list ) )
+				return list;
+			else
+				return null;
+		}
+
 		public Entity GetEntity( IntVector3 position )
 		{
 			var index = GetLocalPositionIndex( position );
@@ -811,6 +831,44 @@ namespace Facepunch.Voxels
 				return entity;
 			else
 				return null;
+		}
+
+		public void ClearDetails( IntVector3 position )
+		{
+			var index = GetLocalPositionIndex( position );
+
+			if ( Details.TryGetValue( index, out var list ) )
+			{
+				foreach ( var entity in list )
+				{
+					entity.Delete();
+				}
+
+				Details.Remove( index );
+			}
+		}
+
+		public void RemoveDetail( IntVector3 position, Entity entity )
+		{
+			var index = GetLocalPositionIndex( position );
+
+			if ( Details.TryGetValue( index, out var list ) )
+			{
+				list.Remove( entity );
+			}
+		}
+
+		public void AddDetail( IntVector3 position, Entity entity )
+		{
+			var index = GetLocalPositionIndex( position );
+
+			if ( !Details.TryGetValue( index, out var list ) )
+			{
+				list = new List<Entity>();
+				Details[index] = list;
+			}
+
+			list.Add( entity );
 		}
 
 		public void SetEntity( IntVector3 position, BlockEntity entity )
