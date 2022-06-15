@@ -13,6 +13,8 @@ namespace Facepunch.Voxels
 		public virtual string FriendlyName => "";
 		public virtual string Description => "";
 		public virtual bool AttenuatesSunLight => false;
+		public virtual float DetailSpawnChance => 0f;
+		public virtual string[] DetailModels => null;
 		public virtual bool HasTexture => true;
 		public virtual bool IsPassable => false;
 		public virtual bool IsTranslucent => false;
@@ -40,12 +42,32 @@ namespace Facepunch.Voxels
 
 		public virtual void OnNeighbourUpdated( Chunk chunk, IntVector3 position, IntVector3 neighbourPosition )
 		{
+			if ( IsServer )
+			{
+				var blockAboveId = World.GetAdjacentBlock( position, (int)BlockFace.Top );
 
+				if ( blockAboveId > 0 )
+				{
+					chunk.ClearDetails( position );
+				}
+			}
 		}
 
 		public virtual void OnBlockAdded( Chunk chunk, IntVector3 position, int direction )
 		{
-			
+			if ( IsServer && DetailSpawnChance > 0f && Rand.Float() < DetailSpawnChance )
+			{
+				var blockAboveId = World.GetAdjacentBlock( position, (int)BlockFace.Top );
+				
+				if ( blockAboveId == 0 )
+				{
+					var detail = new ModelEntity( Rand.FromArray( DetailModels ) );
+					var sourcePosition = World.ToSourcePositionCenter( position, true, true, false );
+					sourcePosition.z += World.VoxelSize;
+					detail.Position = sourcePosition;
+					chunk.AddDetail( World.ToLocalPosition( position ), detail );
+				}
+			}
 		}
 
 		public virtual void OnBlockRemoved( Chunk chunk, IntVector3 position )

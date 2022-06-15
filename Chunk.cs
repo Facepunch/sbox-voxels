@@ -150,7 +150,7 @@ namespace Facepunch.Voxels
 				LightMap.UpdateTexture();
 			}
 
-			CreateEntities();
+			InitializeBlocks();
 			Initialized = true;
 			IsInitializing = false;
 
@@ -665,7 +665,7 @@ namespace Facepunch.Voxels
 			return Offset + position;
 		}
 
-		public void CreateEntities()
+		public void InitializeBlocks()
 		{
 			var isServer = IsServer;
 
@@ -680,12 +680,20 @@ namespace Facepunch.Voxels
 						if ( blockId == 0 ) continue;
 
 						var block = World.GetBlockType( blockId );
+						var position = new IntVector3( x, y, z );
+
+						if ( BlockStates.TryGetValue( position, out var state ) )
+						{
+							state.OnCreated();
+						}
+
+						block.OnBlockAdded( this, position, 0 );
+
 						var entityName = isServer ? block.ServerEntity : block.ClientEntity;
 
 						if ( !string.IsNullOrEmpty( entityName ) )
 						{
 							var entity = TypeLibrary.Create<BlockEntity>( entityName );
-							var position = new IntVector3( x, y, z );
 							entity.BlockType = block;
 							SetEntity( position, entity );
 						}

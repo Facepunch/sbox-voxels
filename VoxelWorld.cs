@@ -1423,7 +1423,9 @@ namespace Facepunch.Voxels
 					var neighbourChunk = GetChunk( neighbourPosition );
 
 					if ( neighbourChunk.IsValid() )
+					{
 						neighbourBlock.OnNeighbourUpdated( neighbourChunk, neighbourPosition, position );
+					}
 				}
 			}
 
