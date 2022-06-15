@@ -680,9 +680,10 @@ namespace Facepunch.Voxels
 						if ( blockId == 0 ) continue;
 
 						var block = World.GetBlockType( blockId );
-						var position = new IntVector3( x, y, z );
+						var localPosition = new IntVector3( x, y, z );
+						var position = Offset + localPosition;
 
-						if ( BlockStates.TryGetValue( position, out var state ) )
+						if ( BlockStates.TryGetValue( localPosition, out var state ) )
 						{
 							state.OnCreated();
 						}
@@ -695,7 +696,7 @@ namespace Facepunch.Voxels
 						{
 							var entity = TypeLibrary.Create<BlockEntity>( entityName );
 							entity.BlockType = block;
-							SetEntity( position, entity );
+							SetEntity( localPosition, entity );
 						}
 					}
 				}

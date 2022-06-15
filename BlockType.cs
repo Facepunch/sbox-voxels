@@ -61,9 +61,10 @@ namespace Facepunch.Voxels
 				
 				if ( blockAboveId == 0 )
 				{
-					var detail = new ModelEntity( Rand.FromArray( DetailModels ) );
-					var sourcePosition = World.ToSourcePositionCenter( position, true, true, false );
+					var detail = new ModelEntity();
+					var sourcePosition = World.ToSourcePositionCenter( position, true, true, false);
 					sourcePosition.z += World.VoxelSize;
+					detail.SetModel( Rand.FromArray( DetailModels ) );
 					detail.Position = sourcePosition;
 					chunk.AddDetail( World.ToLocalPosition( position ), detail );
 				}
