@@ -27,6 +27,11 @@ namespace Facepunch.Voxels
 		public bool IsServer => Host.IsServer;
 		public bool IsClient => Host.IsClient;
 
+		public BlockType()
+		{
+			World = VoxelWorld.Current;
+		}
+
 		public virtual byte GetTextureId( BlockFace face, Chunk chunk, int x, int y, int z )
 		{
 			if ( string.IsNullOrEmpty( DefaultTexture ) ) return 0;
@@ -61,12 +66,15 @@ namespace Facepunch.Voxels
 				
 				if ( blockAboveId == 0 )
 				{
-					var detail = new ModelEntity();
 					var sourcePosition = World.ToSourcePositionCenter( position, true, true, false);
 					sourcePosition.z += World.VoxelSize;
+
+					var detail = new ModelEntity();
 					detail.SetModel( Rand.FromArray( DetailModels ) );
 					detail.Position = sourcePosition;
+
 					chunk.AddDetail( World.ToLocalPosition( position ), detail );
+					OnSpawnDetailModel( detail );
 				}
 			}
 		}
@@ -86,9 +94,9 @@ namespace Facepunch.Voxels
 
 		}
 
-		public BlockType()
+		protected virtual void OnSpawnDetailModel( ModelEntity entity )
 		{
-			World = VoxelWorld.Current;
+
 		}
 	}
 }
