@@ -53,7 +53,7 @@ namespace Facepunch.Voxels
 
 				if ( blockAboveId > 0 )
 				{
-					chunk.ClearDetails( position );
+					chunk.ClearDetails( World.ToLocalPosition( position ) );
 				}
 			}
 		}
@@ -71,6 +71,7 @@ namespace Facepunch.Voxels
 
 					var detail = new ModelEntity();
 					detail.SetModel( Rand.FromArray( DetailModels ) );
+					detail.EnableAllCollisions = false;
 					detail.Position = sourcePosition;
 
 					chunk.AddDetail( World.ToLocalPosition( position ), detail );
