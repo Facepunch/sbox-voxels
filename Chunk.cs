@@ -1061,6 +1061,7 @@ namespace Facepunch.Voxels
 							var neighbourBlock = World.GetBlockType( neighbourId );
 							var collisionIndex = collisionIndices.Count;
 							var textureId = block.GetTextureId( (BlockFace)faceSide, this, x, y, z );
+							var sourceLighting = block.SourceLighting;
 							var normal = (byte)faceSide;
 							var faceData = (uint)((textureId & 0x1ff) << 18 | (normal & 7) << 27);
 							var axis = BlockDirectionAxis[faceSide];

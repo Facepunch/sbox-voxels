@@ -5,6 +5,7 @@ namespace Facepunch.Voxels
 {
 	public class BlockType
 	{
+		public byte SourceLighting { get; init; }
 		public VoxelWorld World { get; init; }
 		public byte BlockId { get; set; }
 
@@ -18,6 +19,7 @@ namespace Facepunch.Voxels
 		public virtual bool HasTexture => true;
 		public virtual bool IsPassable => false;
 		public virtual bool IsTranslucent => false;
+		public virtual float SourceLightingMultiplier => 1f;
 		public virtual bool UseTransparency => false;
 		public virtual IntVector3 LightLevel => 0;
 		public virtual Vector3 LightFilter => Vector3.One;
@@ -29,6 +31,7 @@ namespace Facepunch.Voxels
 
 		public BlockType()
 		{
+			SourceLighting = (byte)(SourceLightingMultiplier * 8f).CeilToInt().Clamp( 0, 8 );
 			World = VoxelWorld.Current;
 		}
 
