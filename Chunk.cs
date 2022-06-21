@@ -39,12 +39,12 @@ namespace Facepunch.Voxels
 
 		public void SetBrightness( float brightness )
 		{
-			SceneObject?.Attributes?.Set( "GlobalBrightness", brightness );
+			SceneObject?.Attributes?.Set( "VoxelBrightness", brightness );
 		}
 
 		public void SetOpacity( float opacity )
 		{
-			SceneObject?.Attributes?.Set( "GlobalOpacity", opacity );
+			SceneObject?.Attributes?.Set( "VoxelOpacity", opacity );
 		}
 	}
 
