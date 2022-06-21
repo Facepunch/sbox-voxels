@@ -36,6 +36,16 @@ namespace Facepunch.Voxels
 			SceneObject.Attributes.Set( "VoxelSize", Chunk.VoxelSize );
 			SceneObject.Attributes.Set( "LightMap", Chunk.LightMap.Texture );
 		}
+
+		public void SetBrightness( float brightness )
+		{
+			SceneObject?.Attributes?.Set( "GlobalBrightness", brightness );
+		}
+
+		public void SetOpacity( float opacity )
+		{
+			SceneObject?.Attributes?.Set( "GlobalOpacity", opacity );
+		}
 	}
 
 	public partial class Chunk : IValid
@@ -1052,7 +1062,7 @@ namespace Facepunch.Voxels
 							var collisionIndex = collisionIndices.Count;
 							var textureId = block.GetTextureId( (BlockFace)faceSide, this, x, y, z );
 							var normal = (byte)faceSide;
-							var faceData = (uint)((textureId & 31) << 18 | (0 & 15) << 23 | (normal & 7) << 27);
+							var faceData = (uint)((textureId & 0x1ff) << 18 | (normal & 7) << 27);
 							var axis = BlockDirectionAxis[faceSide];
 							var uAxis = (axis + 1) % 3;
 							var vAxis = (axis + 2) % 3;
@@ -1175,14 +1185,16 @@ namespace Facepunch.Voxels
 		[Event.Tick.Client]
 		private void ClientTick()
 		{
-			if ( World.DayCycle.IsValid() )
+			var isDayCycleValid = World.DayCycle.IsValid();
+
+			for ( int i = 0; i < RenderLayers.Count; i++ )
 			{
-				for ( int i = 0; i < RenderLayers.Count; i++ )
-				{
-					var layer = RenderLayers[i];
-					layer.SceneObject?.Attributes?.Set( "GlobalBrightness", World.DayCycle.Brightness );
-					layer.SceneObject?.Attributes?.Set( "GlobalOpacity", World.GlobalOpacity );
-				}
+				var layer = RenderLayers[i];
+
+				if ( isDayCycleValid )
+					layer.SetBrightness( World.DayCycle.Brightness );
+
+				layer.SetOpacity( World.GlobalOpacity );
 			}
 
 			var viewer = Local.Client.GetChunkViewer();
