@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Facepunch.Voxels
 {
-	public abstract class BlockType
+	public abstract class BlockType : IValid
 	{
 		public byte SourceLighting { get; init; }
 		public VoxelWorld World { get; init; }
@@ -28,6 +28,7 @@ namespace Facepunch.Voxels
 
 		public bool IsServer => Host.IsServer;
 		public bool IsClient => Host.IsClient;
+		public bool IsValid => true;
 
 		public BlockType()
 		{
