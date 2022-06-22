@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Facepunch.Voxels
 {
-	public class BlockType
+	public abstract class BlockType
 	{
 		public byte SourceLighting { get; init; }
 		public VoxelWorld World { get; init; }

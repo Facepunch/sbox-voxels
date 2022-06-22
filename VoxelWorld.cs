@@ -1013,7 +1013,10 @@ namespace Facepunch.Voxels
 
 			foreach ( var type in TypeLibrary.GetTypes<BlockType>() )
 			{
-				if ( type == typeof( BlockType ) || type == typeof( AirBlock ) )
+				if ( type.IsAbstract || type.IsGenericType )
+					continue;
+
+				if ( type == typeof( AirBlock ) )
 					continue;
 
 				AddBlockType( TypeLibrary.Create<BlockType>( type ) );

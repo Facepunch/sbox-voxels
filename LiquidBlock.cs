@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Facepunch.Voxels
 {
-	public class LiquidBlock : BlockType
+	public abstract class LiquidBlock : BlockType
 	{
 		public override bool IsPassable => true;
 
