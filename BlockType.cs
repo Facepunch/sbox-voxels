@@ -13,11 +13,11 @@ namespace Facepunch.Voxels
 		public virtual string DefaultTexture => "";
 		public virtual string FriendlyName => "";
 		public virtual string Description => "";
+		public virtual bool HideMesh => false;
 		public virtual bool AttenuatesSunLight => false;
 		public virtual float DetailSpawnChance => 0f;
 		public virtual float DetailScale => 0f;
 		public virtual string[] DetailModels => null;
-		public virtual bool HasTexture => true;
 		public virtual bool IsPassable => false;
 		public virtual bool IsTranslucent => false;
 		public virtual bool ShowInEditor => true;

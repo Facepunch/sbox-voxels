@@ -953,11 +953,11 @@ namespace Facepunch.Voxels
 			}
 		}
 
-		public void SetBlockOnServer( IntVector3 position, byte blockId, int direction = 0 )
+		public void SetBlockOnServer( IntVector3 position, byte blockId, int direction = 0, bool clearState = true )
 		{
 			Host.AssertServer();
 
-			if ( SetBlockAndUpdate( position, blockId, direction ) )
+			if ( SetBlockAndUpdate( position, blockId, direction, false, clearState ) )
 			{
 				OutgoingBlockUpdates[position] = new ChunkBlockUpdate
 				{
@@ -1351,7 +1351,7 @@ namespace Facepunch.Voxels
 			GameTask.RunInThreadAsync( ChunkFullUpdateTask );
 		}
 
-		public bool SetBlockAndUpdate( IntVector3 position, byte blockId, int direction, bool forceUpdate = false )
+		public bool SetBlockAndUpdate( IntVector3 position, byte blockId, int direction, bool forceUpdate = false, bool clearState = true )
 		{
 			var currentChunk = GetChunk( position );
 			if ( !currentChunk.IsValid() ) return false;
@@ -1359,7 +1359,7 @@ namespace Facepunch.Voxels
 			var shouldBuild = false;
 			var chunksToUpdate = new HashSet<Chunk>();
 
-			if ( SetBlock( position, blockId, direction ) || forceUpdate )
+			if ( SetBlock( position, blockId, direction, clearState ) || forceUpdate )
 			{
 				shouldBuild = true;
 				chunksToUpdate.Add( currentChunk );
@@ -1411,7 +1411,7 @@ namespace Facepunch.Voxels
 			return chunk.GetMapPositionBlock( position );
 		}
 
-		public bool SetBlock( IntVector3 position, byte blockId, int direction )
+		public bool SetBlock( IntVector3 position, byte blockId, int direction, bool clearState = true )
 		{
 			var chunk = GetChunk( position );
 			if ( !chunk.IsValid() ) return false;
@@ -1453,7 +1453,21 @@ namespace Facepunch.Voxels
 			currentBlock.OnBlockRemoved( chunk, position );
 
 			chunk.ClearDetails( localPosition );
-			chunk.RemoveState( localPosition );
+
+			if ( !clearState )
+			{
+				var state = chunk.GetState<BlockState>( localPosition );
+
+				if ( state.IsValid() )
+				{
+					state.BlockId = blockId;
+				}
+			}
+			else
+			{
+				chunk.RemoveState( localPosition );
+			}
+
 			chunk.SetBlock( blockIndex, blockId );
 
 			block.OnBlockAdded( chunk, position, direction );

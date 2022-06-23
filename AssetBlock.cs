@@ -10,9 +10,9 @@ namespace Facepunch.Voxels
 		public override string FriendlyName => Resource.FriendlyName;
 		public override string Description => Resource.Description;
 		public override string DefaultTexture => Resource.Textures.Default;
-		public override bool IsTranslucent => Resource.IsTranslucent;
+		public override bool HideMesh => !string.IsNullOrEmpty( ModelOverride );
+		public override bool IsTranslucent => HideMesh || Resource.IsTranslucent;
 		public override bool UseTransparency => Resource.UseTransparency;
-		public override bool HasTexture => true;
 		public override bool IsPassable => Resource.IsPassable;
 		public override bool AttenuatesSunLight => Resource.AttenuatesSunLight;
 		public override string[] DetailModels => Resource.DetailModels;
@@ -26,6 +26,9 @@ namespace Facepunch.Voxels
 		public override string FootLandSound => Resource.Sounds.FootLand;
 		public override string ImpactSound => Resource.Sounds.Impact;
 		public override string Icon => Resource.Icon;
+		public override string ServerEntity => GetServerEntity();
+		public virtual string ModelOverride => Resource.ModelOverride;
+		public virtual bool ModelFacesDirection => Resource.ModelFacesDirection;
 
 		public void SetResource( BlockResource resource )
 		{
@@ -42,6 +45,25 @@ namespace Facepunch.Voxels
 			return Resource.ResourceName;
 		}
 
+		public override BlockState CreateState() => new ModelBlockState();
+
+		public override void OnBlockAdded( Chunk chunk, IntVector3 position, int direction )
+		{
+			if ( !string.IsNullOrEmpty( ModelOverride ) )
+			{
+				var state = World.GetState<ModelBlockState>( position );
+
+				if ( !state.IsValid() )
+				{
+					state = World.GetOrCreateState<ModelBlockState>( position );
+					state.Direction = (BlockFace)direction;
+					state.IsDirty = true;
+				}
+			}
+
+			base.OnBlockAdded( chunk, position, direction );
+		}
+
 		public override byte GetTextureId( BlockFace face, Chunk chunk, int x, int y, int z )
 		{
 			if ( Resource.FaceToTexture.TryGetValue( face, out var texture ) )
@@ -50,6 +72,16 @@ namespace Facepunch.Voxels
 			}
 
 			return base.GetTextureId( face, chunk, x, y, z );
+		}
+
+		private string GetServerEntity()
+		{
+			if ( !string.IsNullOrEmpty( ModelOverride ) )
+			{
+				return typeof( ModelBlockEntity ).Name;
+			}
+
+			return null;
 		}
 	}
 }

@@ -38,6 +38,11 @@ namespace Facepunch.Voxels
 		[Description( "You can use aliases to keep backwards compatibility with blocks that were previously classes." )]
 		public string[] Aliases { get; set; }
 
+		[Description( "Until block shapes are done you can use a model instead. This is ugly, but it will do for now." )]
+		[ResourceType( "vmdl" )]
+		public string ModelOverride { get; set; }
+		public bool ModelFacesDirection { get; set; }
+
 		[ResourceType( "png" )]
 		public string Icon { get; set; }
 

@@ -629,9 +629,20 @@ namespace Facepunch.Voxels
 			}
 
 			if ( state.IsValid() )
+			{
+				if ( BlockStates.ContainsKey( state.LocalPosition ) )
+				{
+					BlockStates.Remove( state.LocalPosition );
+					DirtyBlockStates.Add( state.LocalPosition );
+				}
+
+				state.LocalPosition = position;
 				BlockStates[position] = state;
+			}
 			else
+			{
 				BlockStates.Remove( position );
+			}
 
 			DirtyBlockStates.Add( position );
 		}
@@ -1068,7 +1079,7 @@ namespace Facepunch.Voxels
 							var uAxis = (axis + 1) % 3;
 							var vAxis = (axis + 2) % 3;
 
-							var shouldGenerateVertices = IsClient && block.HasTexture && neighbourBlock.IsTranslucent && !block.ShouldCullFace( (BlockFace)faceSide, neighbourBlock );
+							var shouldGenerateVertices = IsClient && !block.HideMesh && neighbourBlock.IsTranslucent && !block.ShouldCullFace( (BlockFace)faceSide, neighbourBlock );
 							var shouldGenerateCollision = !block.IsPassable && neighbourBlock.IsPassable;
 
 							if ( !shouldGenerateCollision && !shouldGenerateVertices )

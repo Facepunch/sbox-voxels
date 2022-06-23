@@ -13,8 +13,9 @@ namespace Facepunch.Voxels
 		}
 
 		public override string FriendlyName => "Air";
+		public override bool ShowInEditor => false;
 		public override bool IsTranslucent => true;
-		public override bool HasTexture => false;
+		public override bool HideMesh => true;
 		public override bool IsPassable => true;
 	}
 }
