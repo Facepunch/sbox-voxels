@@ -9,7 +9,7 @@ namespace Facepunch.Voxels
 
 		public override string FriendlyName => Resource.FriendlyName;
 		public override string Description => Resource.Description;
-		public override string DefaultTexture => Resource.DefaultTexture;
+		public override string DefaultTexture => Resource.Textures.Default;
 		public override bool IsTranslucent => Resource.IsTranslucent;
 		public override bool UseTransparency => Resource.UseTransparency;
 		public override bool HasTexture => true;
@@ -35,6 +35,16 @@ namespace Facepunch.Voxels
 		public override string GetUniqueName()
 		{
 			return Resource.ResourceName;
+		}
+
+		public override byte GetTextureId( BlockFace face, Chunk chunk, int x, int y, int z )
+		{
+			if ( Resource.FaceToTexture.TryGetValue( face, out var texture ) )
+			{
+				return World.BlockAtlas.GetTextureId( texture );
+			}
+
+			return base.GetTextureId( face, chunk, x, y, z );
 		}
 	}
 }

@@ -4,6 +4,17 @@ using Sandbox;
 
 namespace Facepunch.Voxels
 {
+	public struct BlockTextureList
+	{
+		public string Default { get; set; }
+		public string Top { get; set; }
+		public string Bottom { get; set; }
+		public string North { get; set; }
+		public string East { get; set; }
+		public string South { get; set; }
+		public string West { get; set; }
+	}
+
 	[GameResource( "Block Type", "block", "A simple voxel block type with no custom logic.", Icon = "star" )]
 	public class BlockResource : GameResource
 	{
@@ -11,8 +22,12 @@ namespace Facepunch.Voxels
 
 		public string FriendlyName { get; set; }
 		public string Description { get; set; }
+
+		[Description( "All textures should be the name of the sprite in the block atlas." )]
+		public BlockTextureList Textures { get; set; }
+
+		[Description( "You can use aliases to keep backwards compatibility with blocks that were previously classes." )]
 		public string[] Aliases { get; set; }
-		public string DefaultTexture { get; set; } = "";
 
 		[ResourceType( "png" )]
 		public string Icon { get; set; }
@@ -30,9 +45,12 @@ namespace Facepunch.Voxels
 		[Category( "Light Filtering" )] public float GreenFilter { get; set; } = 1f;
 		[Category( "Light Filtering" )] public float BlueFilter { get; set; } = 1f;
 
-		[Category( "Detail Meshes" )] public string[] DetailModels { get; set; }
+		[Category( "Detail Meshes" ), ResourceType( "vmdl" )] public string[] DetailModels { get; set; }
 		[Category( "Detail Meshes" )] public float DetailSpawnChance { get; set; } = 0f;
 		[Category( "Detail Meshes" )] public float DetailScale { get; set; } = 1f;
+
+		[HideInEditor]
+		public Dictionary<BlockFace,string> FaceToTexture { get; set; }
 
 		[HideInEditor]
 		public IntVector3 LightLevel { get; protected set; }
@@ -46,10 +64,26 @@ namespace Facepunch.Voxels
 
 			LightLevel = new IntVector3( RedLight, GreenLight, BlueLight );
 			LightFilter = new Vector3( RedFilter, GreenFilter, BlueFilter );
+			FaceToTexture = new();
+
+			AddFaceTexture( BlockFace.Top, Textures.Top );
+			AddFaceTexture( BlockFace.Bottom, Textures.Bottom );
+			AddFaceTexture( BlockFace.North, Textures.North );
+			AddFaceTexture( BlockFace.East, Textures.East );
+			AddFaceTexture( BlockFace.South, Textures.South );
+			AddFaceTexture( BlockFace.West, Textures.West );
 
 			if ( !All.Contains( this ) )
 			{
 				All.Add( this );
+			}
+		}
+
+		protected void AddFaceTexture( BlockFace face, string texture )
+		{
+			if ( !string.IsNullOrEmpty( texture ) )
+			{
+				FaceToTexture.Add( face, texture );
 			}
 		}
 	}
