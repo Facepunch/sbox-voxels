@@ -1669,7 +1669,7 @@ namespace Facepunch.Voxels
 				{
 					using ( var writer = new BinaryWriter( stream ) )
 					{
-						var updatesPerTick = OutgoingBlockUpdates.Take( 1024 );
+						var updatesPerTick = OutgoingBlockUpdates.Take( 512 );
 						writer.Write( updatesPerTick.Count() );
 						
 						foreach ( var kv in updatesPerTick )
@@ -1693,6 +1693,8 @@ namespace Facepunch.Voxels
 				{
 					OutgoingBlockUpdates.Remove( position );
 				}
+
+				BlockUpdatesToClear.Clear();
 			}
 
 			foreach ( var client in Client.All )
