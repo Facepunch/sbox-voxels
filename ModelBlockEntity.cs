@@ -23,7 +23,7 @@ namespace Facepunch.Voxels
 
 				if ( block.ModelFacesDirection )
 				{
-					var state = World.GetState<ModelBlockState>( BlockPosition );
+					var state = World.GetState<BlockState>( BlockPosition );
 
 					if ( state.IsValid() )
 					{

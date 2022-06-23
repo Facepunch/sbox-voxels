@@ -917,7 +917,7 @@ namespace Facepunch.Voxels
 				return false;
 			}
 
-			SetBlockOnServer( position.x, position.y, position.z, blockId, (int)face );
+			SetBlockOnServer( position, blockId, (int)face );
 			return true;
 		}
 
@@ -953,23 +953,30 @@ namespace Facepunch.Voxels
 			}
 		}
 
+		public void SetBlockOnServerKeepState( IntVector3 position, byte blockId )
+		{
+			SetBlockOnServer( position, blockId, -1, false );
+		}
+
 		public void SetBlockOnServer( IntVector3 position, byte blockId, int direction = 0, bool clearState = true )
 		{
 			Host.AssertServer();
 
 			if ( SetBlockAndUpdate( position, blockId, direction, false, clearState ) )
 			{
+				var state = GetState<BlockState>( position );
+
+				if ( state.IsValid() )
+				{
+					direction = (int)state.Direction;
+				}
+
 				OutgoingBlockUpdates[position] = new ChunkBlockUpdate
 				{
 					blockId = blockId,
 					direction = direction
 				};
 			}
-		}
-
-		public void SetBlockOnServer( int x, int y, int z, byte blockId, int direction = 0 )
-		{
-			SetBlockOnServer( new IntVector3( x, y, z ), blockId, direction );
 		}
 
 		public byte FindBlockId<T>() where T : BlockType
@@ -1460,6 +1467,10 @@ namespace Facepunch.Voxels
 
 				if ( state.IsValid() )
 				{
+					if ( direction == -1 )
+						direction = (int)state.Direction;
+
+					state.Direction = (BlockFace)direction;
 					state.BlockId = blockId;
 				}
 			}

@@ -630,12 +630,7 @@ namespace Facepunch.Voxels
 
 			if ( state.IsValid() )
 			{
-				if ( BlockStates.ContainsKey( state.LocalPosition ) )
-				{
-					BlockStates.Remove( state.LocalPosition );
-					DirtyBlockStates.Add( state.LocalPosition );
-				}
-
+				state = (T)state.Copy();
 				state.LocalPosition = position;
 				BlockStates[position] = state;
 			}

@@ -28,6 +28,7 @@ namespace Facepunch.Voxels
 			}
 		}
 
+		public BlockFace Direction { get; set; }
 		public byte BlockId { get; set; }
 		public Chunk Chunk { get; set; }
 		public IntVector3 LocalPosition { get; set; }
@@ -73,11 +74,13 @@ namespace Facepunch.Voxels
 		public virtual void Serialize( BinaryWriter writer )
 		{
 			writer.Write( Health );
+			writer.Write( (byte)Direction );
 		}
 
 		public virtual void Deserialize( BinaryReader reader )
 		{
 			Health = reader.ReadByte();
+			Direction = (BlockFace)reader.ReadByte();
 		}
 
 		public virtual BlockState Copy()

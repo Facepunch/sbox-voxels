@@ -45,17 +45,17 @@ namespace Facepunch.Voxels
 			return Resource.ResourceName;
 		}
 
-		public override BlockState CreateState() => new ModelBlockState();
+		public override BlockState CreateState() => new BlockState();
 
 		public override void OnBlockAdded( Chunk chunk, IntVector3 position, int direction )
 		{
 			if ( !string.IsNullOrEmpty( ModelOverride ) )
 			{
-				var state = World.GetState<ModelBlockState>( position );
+				var state = World.GetState<BlockState>( position );
 
 				if ( !state.IsValid() )
 				{
-					state = World.GetOrCreateState<ModelBlockState>( position );
+					state = World.GetOrCreateState<BlockState>( position );
 					state.Direction = (BlockFace)direction;
 					state.IsDirty = true;
 				}
