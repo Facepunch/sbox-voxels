@@ -27,6 +27,11 @@ namespace Facepunch.Voxels
 		public virtual Vector3 LightFilter => Vector3.One;
 		public virtual string ServerEntity => "";
 		public virtual string ClientEntity => "";
+		public virtual string FootLeftSound => "";
+		public virtual string FootRightSound => "";
+		public virtual string FootLaunchSound => "";
+		public virtual string FootLandSound => "";
+		public virtual string ImpactSound => "";
 
 		public bool IsServer => Host.IsServer;
 		public bool IsClient => Host.IsClient;

@@ -15,6 +15,15 @@ namespace Facepunch.Voxels
 		public string West { get; set; }
 	}
 
+	public struct BlockSoundData
+	{
+		[ResourceType( "sound" )] public string FootLeft { get; set; }
+		[ResourceType( "sound" )] public string FootRight { get; set; }
+		[ResourceType( "sound" )] public string FootLaunch { get; set; }
+		[ResourceType( "sound" )] public string FootLand { get; set; }
+		[ResourceType( "sound" )] public string Impact { get; set; }
+	}
+
 	[GameResource( "Block Type", "block", "A simple voxel block type with no custom logic.", Icon = "star" )]
 	public class BlockResource : GameResource
 	{
@@ -36,6 +45,8 @@ namespace Facepunch.Voxels
 		public bool UseTransparency { get; set; } = false;
 		public bool IsPassable { get; set; } = false;
 		public bool AttenuatesSunLight { get; set; } = false;
+
+		public BlockSoundData Sounds { get; set; }
 
 		[Category( "Light Emission" )] public int RedLight { get; set; } = 0;
 		[Category( "Light Emission" )] public int GreenLight { get; set; } = 0;
