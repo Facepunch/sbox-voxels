@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -81,7 +82,7 @@ namespace Facepunch.Voxels
 						TranslucentMaterial = translucentMaterial
 					};
 
-					Current.LoadBlockAtlas( reader.ReadString() );
+					Current.LoadBlockAtlasFromJson( reader.ReadString() );
 
 					var types = reader.ReadInt32();
 
@@ -509,7 +510,7 @@ namespace Facepunch.Voxels
 					writer.Write( MinimumLoadedChunks );
 					writer.Write( OpaqueMaterial );
 					writer.Write( TranslucentMaterial );
-					writer.Write( BlockAtlasFileName );
+					writer.Write( BlockAtlas.Json );
 					writer.Write( BlockData.Count - 1 );
 
 					foreach ( var kv in BlockData )
@@ -987,6 +988,15 @@ namespace Facepunch.Voxels
 				return 0;
 		}
 
+		public void LoadBlockAtlasFromJson( string json )
+		{
+			if ( BlockAtlas != null )
+				throw new Exception( "Unable to load a block atlas as one is already loaded for this world!" );
+
+			BlockAtlas = JsonSerializer.Deserialize<BlockAtlas>( json );
+			BlockAtlas.Initialize( json );
+		}
+
 		public void LoadBlockAtlas( string fileName )
 		{
 			if ( BlockAtlas != null )
@@ -994,7 +1004,9 @@ namespace Facepunch.Voxels
 
 			BlockAtlasFileName = fileName;
 			BlockAtlas = FileSystem.Mounted.ReadJsonOrDefault<BlockAtlas>( fileName );
-			BlockAtlas.Initialize();
+
+			string jsonString = JsonSerializer.Serialize( BlockAtlas );
+			BlockAtlas.Initialize( jsonString );
 		}
 
 		public void AddBlockType( BlockType type )

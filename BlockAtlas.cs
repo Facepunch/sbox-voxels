@@ -11,6 +11,7 @@ namespace Facepunch.Voxels
 		}
 
 		public List<FrameData> Frames { get; set; }
+		public string Json { get; set; }
 
 		private Dictionary<string, byte> TextureIds { get; set; }
 		private string[] Blocks { get; set; }
@@ -24,13 +25,14 @@ namespace Facepunch.Voxels
 				return 0;
 		}
 
-		public void Initialize()
+		public void Initialize( string json )
 		{
 			if ( Initialized ) return;
 
 			Initialized = true;
 			TextureIds = new();
 			Blocks = Frames.Select( f => f.FileName ).ToArray();
+			Json = json;
 
 			for ( var i = 0; i < Blocks.Length; i++ )
 			{
