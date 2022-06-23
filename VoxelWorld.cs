@@ -95,8 +95,6 @@ namespace Facepunch.Voxels
 						var isResource = reader.ReadBoolean();
 						var aliasCount = reader.ReadInt32();
 
-						Log.Info( $"[Client] Initializing block type {name} with id #{id}" );
-
 						BlockType type;
 
 						if ( isResource )
@@ -113,6 +111,8 @@ namespace Facepunch.Voxels
 
 						type.BlockId = id;
 						type.Initialize();
+
+						Log.Info( $"[Client] Initializing block type {type.FriendlyName} with id #{id}" );
 
 						Current.BlockTypes.TryAdd( name, id );
 						Current.BlockData.TryAdd( id, type );
@@ -1004,10 +1004,10 @@ namespace Facepunch.Voxels
 
 			var name = type.GetUniqueName();
 
-			Log.Info( $"[Server] Initializing block type {name} with id #{NextAvailableBlockId}" );
-
 			type.BlockId = NextAvailableBlockId;
 			type.Initialize();
+
+			Log.Info( $"[Server] Initializing block type {type.FriendlyName} with id #{NextAvailableBlockId}" );
 
 			var aliases = type.GetUniqueAliases();
 
@@ -1016,7 +1016,7 @@ namespace Facepunch.Voxels
 				foreach ( var alias in aliases )
 				{
 					BlockTypes[alias] = NextAvailableBlockId;
-					Log.Info( "Adding " + alias + " alias to " + NextAvailableBlockId + " is alias for " + name );
+					Log.Info( $"[Server] Adding {alias} as an alias for #{NextAvailableBlockId}" );
 				}
 			}
 
