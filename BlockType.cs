@@ -15,6 +15,7 @@ namespace Facepunch.Voxels
 		public virtual string Description => "";
 		public virtual bool AttenuatesSunLight => false;
 		public virtual float DetailSpawnChance => 0f;
+		public virtual float DetailScale => 0f;
 		public virtual string[] DetailModels => null;
 		public virtual bool HasTexture => true;
 		public virtual bool IsPassable => false;
@@ -34,6 +35,18 @@ namespace Facepunch.Voxels
 		{
 			SourceLighting = (byte)(SourceLightingMultiplier * 8f).CeilToInt().Clamp( 0, 8 );
 			World = VoxelWorld.Current;
+		}
+
+		public virtual string[] GetUniqueAliases()
+		{
+			var description = TypeLibrary.GetDescription( GetType() );
+			if ( description != null ) return description.Aliases;
+			return null;
+		}
+
+		public virtual string GetUniqueName()
+		{
+			return GetType().Name;
 		}
 
 		public virtual byte GetTextureId( BlockFace face, Chunk chunk, int x, int y, int z )
@@ -77,6 +90,7 @@ namespace Facepunch.Voxels
 					detail.SetModel( Rand.FromArray( DetailModels ) );
 					detail.EnableAllCollisions = false;
 					detail.Position = sourcePosition;
+					detail.Scale = DetailScale;
 
 					chunk.AddDetail( World.ToLocalPosition( position ), detail );
 					OnSpawnDetailModel( detail );
