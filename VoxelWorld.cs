@@ -15,9 +15,6 @@ namespace Facepunch.Voxels
 	{
 		public struct ChunkBlockUpdate
 		{
-			public int x;
-			public int y;
-			public int z;
 			public byte blockId;
 			public int direction;
 		}
@@ -248,7 +245,8 @@ namespace Facepunch.Voxels
 		public List<Vector3> Spawnpoints { get; private set; } = new();
 		public Dictionary<byte, BlockType> BlockData { get; private set; } = new();
 		public Dictionary<string, byte> BlockTypes { get; private set; } = new();
-		public List<ChunkBlockUpdate> OutgoingBlockUpdates { get; private set; } = new();
+		public Dictionary<IntVector3,ChunkBlockUpdate> OutgoingBlockUpdates { get; private set; } = new();
+		public HashSet<IntVector3> BlockUpdatesToClear { get; private set; } = new();
 		public Dictionary<byte, Biome> BiomeLookup { get; private set; } = new();
 		public Dictionary<IntVector3, Chunk> Chunks { get; private set; } = new();
 		public bool HasNoDayCycleController { get; private set; } = false;
@@ -961,14 +959,11 @@ namespace Facepunch.Voxels
 
 			if ( SetBlockAndUpdate( position, blockId, direction ) )
 			{
-				OutgoingBlockUpdates.Add( new ChunkBlockUpdate
+				OutgoingBlockUpdates[position] = new ChunkBlockUpdate
 				{
-					x = position.x,
-					y = position.y,
-					z = position.z,
 					blockId = blockId,
 					direction = direction
-				} );
+				};
 			}
 		}
 
@@ -1097,6 +1092,7 @@ namespace Facepunch.Voxels
 
 			ChunkFullUpdateQueue.Clear();
 			OutgoingBlockUpdates.Clear();
+			BlockUpdatesToClear.Clear();
 
 			foreach ( var queue in ChunkInitialUpdateQueues )
 			{
@@ -1456,7 +1452,7 @@ namespace Facepunch.Voxels
 
 			currentBlock.OnBlockRemoved( chunk, position );
 
-			chunk.ClearDetails( position );
+			chunk.ClearDetails( localPosition );
 			chunk.RemoveState( localPosition );
 			chunk.SetBlock( blockIndex, blockId );
 
@@ -1673,15 +1669,19 @@ namespace Facepunch.Voxels
 				{
 					using ( var writer = new BinaryWriter( stream ) )
 					{
-						writer.Write( OutgoingBlockUpdates.Count );
+						var updatesPerTick = OutgoingBlockUpdates.Take( 1024 );
+						writer.Write( updatesPerTick.Count() );
 						
-						foreach ( var update in OutgoingBlockUpdates )
+						foreach ( var kv in updatesPerTick )
 						{
-							writer.Write( update.x );
-							writer.Write( update.y );
-							writer.Write( update.z );
-							writer.Write( update.blockId );
-							writer.Write( update.direction );
+							var position = kv.Key;
+							var data = kv.Value;
+							writer.Write( position.x );
+							writer.Write( position.y );
+							writer.Write( position.z );
+							writer.Write( data.blockId );
+							writer.Write( data.direction );
+							BlockUpdatesToClear.Add( position );
 						}
 
 						var compressed = CompressionHelper.Compress( stream.ToArray() );
@@ -1689,7 +1689,10 @@ namespace Facepunch.Voxels
 					}
 				}
 
-				OutgoingBlockUpdates.Clear();
+				foreach ( var position in BlockUpdatesToClear )
+				{
+					OutgoingBlockUpdates.Remove( position );
+				}
 			}
 
 			foreach ( var client in Client.All )
