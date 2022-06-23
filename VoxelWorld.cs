@@ -1500,6 +1500,11 @@ namespace Facepunch.Voxels
 			return position + Chunk.BlockDirections[side];
 		}
 
+		public BlockType GetBlockType( IntVector3 position )
+		{
+			return GetBlockType( GetBlock( position ) );
+		}
+
 		public BlockType GetBlockType<T>() where T : BlockType
 		{
 			return GetBlockType( FindBlockId<T>() );
