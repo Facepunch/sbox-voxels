@@ -1,11 +1,4 @@
-﻿using Facepunch.CoreWars.Editor;
-using Facepunch.CoreWars.Inventory;
-using Facepunch.CoreWars.Blocks;
-using Facepunch.Voxels;
-using Sandbox;
-using System;
-using System.IO;
-using System.Linq;
+﻿using Sandbox;
 
 namespace Facepunch.Voxels
 {
