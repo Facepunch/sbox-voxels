@@ -693,9 +693,16 @@ namespace Facepunch.Voxels
 					{
 						var index = x * SizeY * SizeZ + y * SizeZ + z;
 						var blockId = Blocks[index];
+
 						if ( blockId == 0 ) continue;
 
 						var block = World.GetBlockType( blockId );
+
+						if ( !block.IsValid() )
+						{
+							throw new Exception( $"Unable to find a block with id #{blockId}" );
+						}
+
 						var localPosition = new IntVector3( x, y, z );
 						var position = Offset + localPosition;
 
