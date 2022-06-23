@@ -9,30 +9,43 @@ namespace Facepunch.Voxels
 	{
 		public static List<BlockResource> All { get; protected set; } = new();
 
-		[Category( "Meta" )] public string FriendlyName { get; set; }
-		[Category( "Meta" )] public string Description { get; set; }
-		[Category( "Meta" )] public string[] Aliases { get; set; }
-		[Category( "Meta" )] public string DefaultTexture { get; set; } = "";
+		public string FriendlyName { get; set; }
+		public string Description { get; set; }
+		public string[] Aliases { get; set; }
+		public string DefaultTexture { get; set; } = "";
 
-		[ResourceType( "png" ), Category( "Meta" )]
+		[ResourceType( "png" )]
 		public string Icon { get; set; }
 
-		[Category( "Transparency" )] public bool IsTranslucent { get; set; } = false;
-		[Category( "Transparency" )] public bool UseTransparency { get; set; } = false;
+		public bool IsTranslucent { get; set; } = false;
+		public bool UseTransparency { get; set; } = false;
+		public bool IsPassable { get; set; } = false;
+		public bool AttenuatesSunLight { get; set; } = false;
 
-		[Category( "Collision" )] public bool IsPassable { get; set; } = false;
+		[Category( "Light Emission" )] public int RedLight { get; set; } = 0;
+		[Category( "Light Emission" )] public int GreenLight { get; set; } = 0;
+		[Category( "Light Emission" )] public int BlueLight { get; set; } = 0;
 
-		[Category( "Lighting" )] public Vector3 LightLevel { get; set; } = Vector3.Zero;
-		[Category( "Lighting" )] public Vector3 LightFilter { get; set; } = Vector3.One;
-		[Category( "Lighting" )] public bool AttenuatesSunLight { get; set; } = false;
+		[Category( "Light Filtering" )] public float RedFilter { get; set; } = 1f;
+		[Category( "Light Filtering" )] public float GreenFilter { get; set; } = 1f;
+		[Category( "Light Filtering" )] public float BlueFilter { get; set; } = 1f;
 
-		[Category( "Detail" )] public string[] DetailModels { get; set; }
-		[Category( "Detail" )] public float DetailSpawnChance { get; set; } = 0f;
-		[Category( "Detail" )] public float DetailScale { get; set; } = 1f;
+		[Category( "Detail Meshes" )] public string[] DetailModels { get; set; }
+		[Category( "Detail Meshes" )] public float DetailSpawnChance { get; set; } = 0f;
+		[Category( "Detail Meshes" )] public float DetailScale { get; set; } = 1f;
+
+		[HideInEditor]
+		public IntVector3 LightLevel { get; protected set; }
+
+		[HideInEditor]
+		public Vector3 LightFilter { get; protected set; }
 
 		protected override void PostLoad()
 		{
 			base.PostLoad();
+
+			LightLevel = new IntVector3( RedLight, GreenLight, BlueLight );
+			LightFilter = new Vector3( RedFilter, GreenFilter, BlueFilter );
 
 			if ( !All.Contains( this ) )
 			{

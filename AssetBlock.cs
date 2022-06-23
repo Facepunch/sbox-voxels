@@ -18,7 +18,7 @@ namespace Facepunch.Voxels
 		public override string[] DetailModels => Resource.DetailModels;
 		public override float DetailSpawnChance => Resource.DetailSpawnChance;
 		public override float DetailScale => Resource.DetailScale;
-		public override IntVector3 LightLevel => new IntVector3( Resource.LightLevel.x.CeilToInt(), Resource.LightLevel.y.CeilToInt(), Resource.LightLevel.z.CeilToInt() );
+		public override IntVector3 LightLevel => Resource.LightLevel;
 		public override Vector3 LightFilter => Resource.LightFilter;
 		public override string Icon => Resource.Icon;
 
