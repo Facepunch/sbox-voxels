@@ -25,6 +25,8 @@ namespace Facepunch.Voxels
 		public override string FootLaunchSound => Resource.Sounds.FootLaunch;
 		public override string FootLandSound => Resource.Sounds.FootLand;
 		public override string ImpactSound => Resource.Sounds.Impact;
+		public override int MinHueShift => Resource.MinHueShift;
+		public override int MaxHueShift => Resource.MaxHueShift;
 		public override string Icon => GetIcon();
 		public override string ServerEntity => GetServerEntity();
 		public virtual BlockModelOverride ModelOverride => Resource.ModelOverride;

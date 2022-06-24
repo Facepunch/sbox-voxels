@@ -6,13 +6,13 @@ namespace Facepunch.Voxels
 	[StructLayout( LayoutKind.Sequential )]
 	public struct BlockVertex
 	{
-		private readonly uint Data;
-		private readonly uint Data2;
+		private readonly uint FaceData;
+		private readonly uint ExtraData;
 
-		public BlockVertex( uint vertexX, uint vertexY, uint vertexZ, uint chunkX, uint chunkY, uint chunkZ, uint faceData )
+		public BlockVertex( uint vertexX, uint vertexY, uint vertexZ, uint chunkX, uint chunkY, uint chunkZ, uint faceData, uint extraData )
 		{
-			Data = (faceData | (vertexX & 63) | (vertexY & 63) << 6 | (vertexZ & 63) << 12);
-			Data2 = (chunkX & 63) | (chunkY & 63) << 6 | (chunkZ & 63) << 12;
+			FaceData = (faceData | (vertexX & 63) | (vertexY & 63) << 6 | (vertexZ & 63) << 12);
+			ExtraData = (extraData | (chunkX & 63) | (chunkY & 63) << 6 | (chunkZ & 63) << 12);
 		}
 
 		public static readonly VertexAttribute[] Layout =

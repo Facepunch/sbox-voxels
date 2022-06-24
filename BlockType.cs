@@ -22,6 +22,8 @@ namespace Facepunch.Voxels
 		public virtual bool IsTranslucent => false;
 		public virtual bool ShowInEditor => true;
 		public virtual float SourceLightingMultiplier => 1f;
+		public virtual int MinHueShift => 0;
+		public virtual int MaxHueShift => 0;
 		public virtual bool UseTransparency => false;
 		public virtual IntVector3 LightLevel => 0;
 		public virtual Vector3 LightFilter => Vector3.One;

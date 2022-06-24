@@ -1054,6 +1054,9 @@ namespace Facepunch.Voxels
 
 						var block = World.GetBlockType( blockId );
 
+						var random = new Random( x + y + z );
+						var hueShift = random.Int( Math.Clamp( block.MinHueShift, 0, 16 ), Math.Clamp( block.MaxHueShift, 0, 16 ) );
+
 						for ( int faceSide = 0; faceSide < 6; faceSide++ )
 						{
 							var neighbourId = World.GetAdjacentBlock( Offset + position, faceSide );
@@ -1062,7 +1065,8 @@ namespace Facepunch.Voxels
 							var textureId = block.GetTextureId( (BlockFace)faceSide, this, x, y, z );
 							var sourceLighting = block.SourceLighting;
 							var normal = (byte)faceSide;
-							var faceData = (uint)((textureId & 0x1ff) << 18 | (normal & 7) << 27);
+							var extraData = (uint)((hueShift & 0x10) << 18);
+							var faceData = (uint)((textureId & 0x1ff) << 18 | (normal & 0x7) << 27);
 							var axis = BlockDirectionAxis[faceSide];
 							var uAxis = (axis + 1) % 3;
 							var vAxis = (axis + 2) % 3;
@@ -1083,7 +1087,7 @@ namespace Facepunch.Voxels
 
 								if ( shouldGenerateVertices )
 								{
-									var vertex = new BlockVertex( (uint)(x + vOffset.x), (uint)(y + vOffset.y), (uint)(z + vOffset.z), (uint)x, (uint)y, (uint)z, faceData );
+									var vertex = new BlockVertex( (uint)(x + vOffset.x), (uint)(y + vOffset.y), (uint)(z + vOffset.z), (uint)x, (uint)y, (uint)z, faceData, extraData );
 
 									if ( block.IsTranslucent )
 									{ 
