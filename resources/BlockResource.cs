@@ -57,6 +57,9 @@ namespace Facepunch.Voxels
 		public bool IsPassable { get; set; } = false;
 		public bool AttenuatesSunLight { get; set; } = false;
 
+		[MinMax( 0f, 16f )] public int MinHueShift { get; set; } = 0;
+		[MinMax( 0f, 16f )] public int MaxHueShift { get; set; } = 0;
+
 		public BlockSoundData Sounds { get; set; }
 
 		[Category( "Light Emission" )] public int RedLight { get; set; } = 0;
