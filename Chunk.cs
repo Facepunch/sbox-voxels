@@ -27,7 +27,6 @@ namespace Facepunch.Voxels
 		{
 			ModelBuilder = new ModelBuilder();
 			ModelBuilder.AddMesh( Mesh );
-
 			Model = ModelBuilder.Create();
 
 			var transform = new Transform( Chunk.Offset * (float)Chunk.VoxelSize );
@@ -65,7 +64,6 @@ namespace Facepunch.Voxels
 		public bool HasDoneFirstFullUpdate { get; set; }
 		public ChunkGenerator Generator { get; set; }
 		public bool HasOnlyAirBlocks { get; set; }
-		public bool IsModelCreated { get; private set; }
 		public bool HasGenerated { get; private set; }
 		public bool Initialized { get; private set; }
 		public bool IsDestroyed { get; private set; }
@@ -135,6 +133,7 @@ namespace Facepunch.Voxels
 			var boundsMin = Vector3.Zero;
 			var boundsMax = boundsMin + new Vector3( SizeX, SizeY, SizeZ ) * VoxelSize;
 			layer.Mesh = new Mesh( material );
+			layer.Mesh.CreateVertexBuffer<BlockVertex>( BlockVertex.Layout );
 			layer.Mesh.SetBounds( boundsMin, boundsMax );
 			RenderLayers.Add( layer );
 			return layer;
@@ -167,8 +166,13 @@ namespace Facepunch.Voxels
 			if ( IsClient )
 			{
 				TranslucentLayer = CreateRenderLayer( World.TranslucentMaterial );
+				TranslucentLayer.Initialize();
+
 				AlphaTestLayer = CreateRenderLayer( World.OpaqueMaterial );
+				AlphaTestLayer.Initialize();
+
 				OpaqueLayer = CreateRenderLayer( World.OpaqueMaterial );
+				OpaqueLayer.Initialize();
 			}
 
 			Event.Register( this );
@@ -432,17 +436,6 @@ namespace Facepunch.Voxels
 		public void RunQueuedMeshUpdate()
 		{
 			BuildMesh();
-
-			if ( !IsModelCreated )
-			{
-				foreach ( var layer in RenderLayers )
-				{
-					layer.Initialize();
-				}
-
-				IsModelCreated = true;
-			}
-
 			UpdateAdjacents( true );
 		}
 
@@ -963,17 +956,10 @@ namespace Facepunch.Voxels
 				var vertices = UpdateVerticesResult.Vertices[i];
 				var vertexCount = vertices.Length;
 
-				if ( layer.Mesh.HasVertexBuffer )
-					layer.Mesh.SetVertexBufferSize( vertexCount );
-				else
-					layer.Mesh.CreateVertexBuffer<BlockVertex>( Math.Max( 1, vertexCount ), BlockVertex.Layout );
-
-				vertexCount = 0;
-
-				if ( vertices.Length > 0 )
+				if ( vertexCount > 0 )
 				{
-					layer.Mesh.SetVertexBufferData( new Span<BlockVertex>( vertices ), vertexCount );
-					vertexCount += vertices.Length;
+					layer.Mesh.SetVertexBufferSize( vertexCount );
+					layer.Mesh.SetVertexBufferData( new Span<BlockVertex>( vertices )  );
 				}
 
 				layer.Mesh.SetVertexRange( 0, vertexCount );
