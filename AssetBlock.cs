@@ -10,7 +10,7 @@ namespace Facepunch.Voxels
 		public override string FriendlyName => Resource.FriendlyName;
 		public override string Description => Resource.Description;
 		public override string DefaultTexture => Resource.Textures.Default;
-		public override bool HideMesh => !string.IsNullOrEmpty( ModelOverride );
+		public override bool HideMesh => !string.IsNullOrEmpty( ModelOverride.ModelName );
 		public override bool IsTranslucent => HideMesh || Resource.IsTranslucent;
 		public override bool UseTransparency => Resource.UseTransparency;
 		public override bool IsPassable => Resource.IsPassable;
@@ -27,8 +27,7 @@ namespace Facepunch.Voxels
 		public override string ImpactSound => Resource.Sounds.Impact;
 		public override string Icon => Resource.Icon;
 		public override string ServerEntity => GetServerEntity();
-		public virtual string ModelOverride => Resource.ModelOverride;
-		public virtual bool ModelFacesDirection => Resource.ModelFacesDirection;
+		public virtual BlockModelOverride ModelOverride => Resource.ModelOverride;
 
 		public void SetResource( BlockResource resource )
 		{
@@ -49,7 +48,7 @@ namespace Facepunch.Voxels
 
 		public override void OnBlockAdded( Chunk chunk, IntVector3 position, int direction )
 		{
-			if ( !string.IsNullOrEmpty( ModelOverride ) )
+			if ( !string.IsNullOrEmpty( ModelOverride.ModelName ) )
 			{
 				var state = World.GetState<BlockState>( position );
 
@@ -76,7 +75,7 @@ namespace Facepunch.Voxels
 
 		private string GetServerEntity()
 		{
-			if ( !string.IsNullOrEmpty( ModelOverride ) )
+			if ( !string.IsNullOrEmpty( ModelOverride.ModelName ) )
 			{
 				return typeof( ModelBlockEntity ).Name;
 			}

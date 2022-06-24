@@ -11,10 +11,15 @@ namespace Facepunch.Voxels
 
 			if ( block.IsValid() )
 			{
-				SetModel( block.ModelOverride );
+				SetModel( block.ModelOverride.ModelName );
 				SetupPhysicsFromModel( PhysicsMotionType.Keyframed );
 
-				if ( block.ModelFacesDirection )
+				if ( !string.IsNullOrEmpty( block.ModelOverride.MaterialName ) )
+				{
+					SetMaterialOverride( block.ModelOverride.MaterialName );
+				}
+
+				if ( block.ModelOverride.FaceDirection )
 				{
 					var state = World.GetState<BlockState>( BlockPosition );
 

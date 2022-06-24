@@ -24,6 +24,15 @@ namespace Facepunch.Voxels
 		[ResourceType( "sound" )] public string Impact { get; set; }
 	}
 
+	public struct BlockModelOverride
+	{
+		[ResourceType( "vmdl" )]
+		public string ModelName { get; set; }
+		[ResourceType( "vmat" )]
+		public string MaterialName { get; set; }
+		public bool FaceDirection { get; set; }
+	}
+
 	[GameResource( "Block Type", "block", "A simple voxel block type with no custom logic.", Icon = "star" )]
 	public class BlockResource : GameResource
 	{
@@ -38,10 +47,7 @@ namespace Facepunch.Voxels
 		[Description( "You can use aliases to keep backwards compatibility with blocks that were previously classes." )]
 		public string[] Aliases { get; set; }
 
-		[Description( "Until block shapes are done you can use a model instead. This is ugly, but it will do for now." )]
-		[ResourceType( "vmdl" )]
-		public string ModelOverride { get; set; }
-		public bool ModelFacesDirection { get; set; }
+		public BlockModelOverride ModelOverride { get; set; }
 
 		[ResourceType( "png" )]
 		public string Icon { get; set; }
