@@ -25,7 +25,7 @@ namespace Facepunch.Voxels
 		public override string FootLaunchSound => Resource.Sounds.FootLaunch;
 		public override string FootLandSound => Resource.Sounds.FootLand;
 		public override string ImpactSound => Resource.Sounds.Impact;
-		public override string Icon => Resource.Icon;
+		public override string Icon => GetIcon();
 		public override string ServerEntity => GetServerEntity();
 		public virtual BlockModelOverride ModelOverride => Resource.ModelOverride;
 
@@ -71,6 +71,16 @@ namespace Facepunch.Voxels
 			}
 
 			return base.GetTextureId( face, chunk, x, y, z );
+		}
+
+		private string GetIcon()
+		{
+			if ( !string.IsNullOrEmpty( Resource.Icon ) )
+			{
+				return Resource.Icon.Replace( ".jpg", ".png" );
+			}
+
+			return null;
 		}
 
 		private string GetServerEntity()
