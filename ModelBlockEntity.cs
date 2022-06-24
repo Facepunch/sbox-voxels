@@ -42,18 +42,22 @@ namespace Facepunch.Voxels
 		public override void ClientSpawn()
 		{
 			BlockType = VoxelWorld.Current.GetBlockType( BlockId );
+			base.ClientSpawn();
+		}
 
-			var block = BlockType as AssetBlock;
-
-			if ( block.IsValid() )
+		public override void OnNewModel( Model model )
+		{
+			if ( IsClient )
 			{
-				if ( !string.IsNullOrEmpty( block.ModelOverride.MaterialName ) )
+				var block = BlockType as AssetBlock;
+
+				if ( block.IsValid() && !string.IsNullOrEmpty( block.ModelOverride.MaterialName ) )
 				{
 					SetMaterialOverride( block.ModelOverride.MaterialName );
 				}
 			}
 
-			base.ClientSpawn();
+			base.OnNewModel( model );
 		}
 	}
 }
