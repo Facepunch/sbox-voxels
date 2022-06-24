@@ -3,8 +3,10 @@
 namespace Facepunch.Voxels
 {
 	[Library]
-	public class ModelBlockEntity : BlockEntity
+	public partial class ModelBlockEntity : BlockEntity
 	{
+		[Net] public byte BlockId { get; set; }
+
 		public override void Initialize()
 		{
 			var block = BlockType as AssetBlock;
@@ -13,11 +15,6 @@ namespace Facepunch.Voxels
 			{
 				SetModel( block.ModelOverride.ModelName );
 				SetupPhysicsFromModel( PhysicsMotionType.Keyframed );
-
-				if ( !string.IsNullOrEmpty( block.ModelOverride.MaterialName ) )
-				{
-					SetMaterialOverride( block.ModelOverride.MaterialName );
-				}
 
 				if ( block.ModelOverride.FaceDirection )
 				{
@@ -35,9 +32,28 @@ namespace Facepunch.Voxels
 							Rotation = Rotation.FromAxis( Vector3.Up, 270f );
 					}
 				}
+
+				BlockId = block.BlockId;
 			}
 
 			base.Initialize();
+		}
+
+		public override void ClientSpawn()
+		{
+			BlockType = VoxelWorld.Current.GetBlockType( BlockId );
+
+			var block = BlockType as AssetBlock;
+
+			if ( block.IsValid() )
+			{
+				if ( !string.IsNullOrEmpty( block.ModelOverride.MaterialName ) )
+				{
+					SetMaterialOverride( block.ModelOverride.MaterialName );
+				}
+			}
+
+			base.ClientSpawn();
 		}
 	}
 }
