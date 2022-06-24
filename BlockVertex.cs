@@ -11,8 +11,8 @@ namespace Facepunch.Voxels
 
 		public BlockVertex( uint vertexX, uint vertexY, uint vertexZ, uint chunkX, uint chunkY, uint chunkZ, uint faceData, uint extraData )
 		{
-			FaceData = (faceData | (vertexX & 63) | (vertexY & 63) << 6 | (vertexZ & 63) << 12);
-			ExtraData = (extraData | (chunkX & 63) | (chunkY & 63) << 6 | (chunkZ & 63) << 12);
+			FaceData = (faceData | (vertexX & 0x3F) | (vertexY & 0x3F) << 6 | (vertexZ & 0x3F) << 12);
+			ExtraData = (extraData | (chunkX & 0x3F) | (chunkY & 0x3F) << 6 | (chunkZ & 0x3F) << 12);
 		}
 
 		public static readonly VertexAttribute[] Layout =

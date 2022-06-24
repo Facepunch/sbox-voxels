@@ -1019,6 +1019,9 @@ namespace Facepunch.Voxels
 			2, 2, 1, 1, 0, 0
 		};
 
+		[ConVar.Server]
+		public static int HueShiftTest { get; set; }
+
 		public ChunkVertexData StartUpdateVerticesTask()
 		{
 			var output = new ChunkVertexData
@@ -1038,6 +1041,9 @@ namespace Facepunch.Voxels
 			var faceWidth = 1;
 			var faceHeight = 1;
 
+			var chunkIndex = Offset.x * SizeY * SizeZ + Offset.y * SizeZ + Offset.z;
+			var random = new Random( chunkIndex );
+
 			for ( var x = 0; x < SizeX; x++ )
 			{
 				for ( var y = 0; y < SizeY; y++ )
@@ -1053,9 +1059,7 @@ namespace Facepunch.Voxels
 						if ( blockId == 0 ) continue;
 
 						var block = World.GetBlockType( blockId );
-
-						var random = new Random( x + y + z );
-						var hueShift = random.Int( Math.Clamp( block.MinHueShift, 0, 16 ), Math.Clamp( block.MaxHueShift, 0, 16 ) );
+						var hueShift = (byte)random.Int( Math.Clamp( block.MinHueShift, 0, 64 ), Math.Clamp( block.MaxHueShift, 0, 64 ) );
 
 						for ( int faceSide = 0; faceSide < 6; faceSide++ )
 						{
@@ -1065,7 +1069,7 @@ namespace Facepunch.Voxels
 							var textureId = block.GetTextureId( (BlockFace)faceSide, this, x, y, z );
 							var sourceLighting = block.SourceLighting;
 							var normal = (byte)faceSide;
-							var extraData = (uint)((hueShift & 0x10) << 18);
+							var extraData = (uint)((hueShift & 0x3F) << 18);
 							var faceData = (uint)((textureId & 0x1ff) << 18 | (normal & 0x7) << 27);
 							var axis = BlockDirectionAxis[faceSide];
 							var uAxis = (axis + 1) % 3;
