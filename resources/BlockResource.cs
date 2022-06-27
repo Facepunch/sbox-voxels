@@ -52,6 +52,8 @@ namespace Facepunch.Voxels
 		[ResourceType( "png" )]
 		public string Icon { get; set; }
 
+		public Color TintColor { get; set; } = Color.White;
+
 		public bool IsTranslucent { get; set; } = false;
 		public bool UseTransparency { get; set; } = false;
 		public bool IsPassable { get; set; } = false;

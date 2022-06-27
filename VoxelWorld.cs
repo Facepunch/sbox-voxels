@@ -291,8 +291,8 @@ namespace Facepunch.Voxels
 		public int SizeZ;
 		public FastNoiseLite CaveNoise;
 
-		private ConcurrentQueue<Chunk>[] ChunkInitialUpdateQueues = new ConcurrentQueue<Chunk>[1];
-		private ConcurrentQueue<Chunk> ChunkFullUpdateQueue = new ConcurrentQueue<Chunk>();
+		private ConcurrentQueue<Chunk>[] ChunkInitialUpdateQueues = new ConcurrentQueue<Chunk>[2];
+		private ConcurrentQueue<Chunk>[] ChunkFullUpdateQueue = new ConcurrentQueue<Chunk>[2];
 
 		private string BlockAtlasFileName { get; set; }
 		private byte NextAvailableBlockId { get; set; }
@@ -311,11 +311,15 @@ namespace Facepunch.Voxels
 		private VoxelWorld( int seed )
 		{
 			BlockTypes[typeof( AirBlock ).Name] = NextAvailableBlockId;
-			BlockData[NextAvailableBlockId] = new AirBlock( this );
 
 			for ( var i = 0; i < ChunkInitialUpdateQueues.Length; i++ )
 			{
 				ChunkInitialUpdateQueues[i] = new();
+			}
+
+			for ( var i = 0; i < ChunkFullUpdateQueue.Length; i++ )
+			{
+				ChunkFullUpdateQueue[i] = new();
 			}
 
 			CaveNoise = new( seed );
@@ -324,8 +328,13 @@ namespace Facepunch.Voxels
 			CaveNoise.SetFractalOctaves( 2 );
 			CaveNoise.SetFrequency( 1f / 128f );
 
-			NextAvailableBlockId++;
 			Current = this;
+
+			var airBlock = new AirBlock();
+			airBlock.Initialize();
+			BlockData[NextAvailableBlockId] = airBlock;
+
+			NextAvailableBlockId++;
 			Seed = seed;
 
 			BiomeSampler = new BiomeSampler( this );
@@ -369,10 +378,29 @@ namespace Facepunch.Voxels
 
 		public void AddToFullUpdateList( Chunk chunk )
 		{
-			if ( !ChunkFullUpdateQueue.Contains( chunk ) )
+			foreach ( var queue in ChunkFullUpdateQueue )
 			{
-				ChunkFullUpdateQueue.Enqueue( chunk );
+				if ( queue.Contains( chunk ) )
+					return;
 			}
+
+			var smallestIndex = 0;
+			var smallestValue = int.MaxValue;
+
+			for ( var i = 0; i < ChunkFullUpdateQueue.Length; i++ )
+			{
+				var count = ChunkFullUpdateQueue[i].Count;
+
+				if ( count < smallestValue )
+				{
+					smallestIndex = i;
+					smallestValue = count;
+
+					if ( count == 0 ) break;
+				}
+			}
+
+			ChunkFullUpdateQueue[smallestIndex].Enqueue( chunk );
 		}
 
 		public void AddToInitialUpdateList( Chunk chunk )
@@ -1109,7 +1137,11 @@ namespace Facepunch.Voxels
 				}
 			}
 
-			ChunkFullUpdateQueue.Clear();
+			foreach ( var queue in ChunkFullUpdateQueue )
+			{
+				queue.Clear();
+			}
+
 			OutgoingBlockUpdates.Clear();
 			BlockUpdatesToClear.Clear();
 
@@ -1367,7 +1399,11 @@ namespace Facepunch.Voxels
 				GameTask.RunInThreadAsync( () => ChunkInitialUpdateTask( index ) );
 			}
 
-			GameTask.RunInThreadAsync( ChunkFullUpdateTask );
+			for ( var i = 0; i < ChunkFullUpdateQueue.Length; i++ )
+			{
+				var index = i;
+				GameTask.RunInThreadAsync( () => ChunkFullUpdateTask( index ) );
+			}
 		}
 
 		public bool SetBlockAndUpdate( IntVector3 position, byte blockId, int direction, bool forceUpdate = false, bool clearState = true )
@@ -1743,8 +1779,10 @@ namespace Facepunch.Voxels
 			}
 		}
 
-		private async void ChunkFullUpdateTask()
+		private async void ChunkFullUpdateTask( int index )
 		{
+			var queue = ChunkFullUpdateQueue[index];
+
 			while ( !IsDestroyed )
 			{
 				try
@@ -1753,9 +1791,9 @@ namespace Facepunch.Voxels
 
 					await GameTask.Delay( 1000 / 30 );
 
-					while ( ChunkFullUpdateQueue.Count > 0 )
+					while ( queue.Count > 0 )
 					{
-						if ( ChunkFullUpdateQueue.TryDequeue( out var chunk ) )
+						if ( queue.TryDequeue( out var chunk ) )
 						{
 							chunk.FullUpdate();
 						}
