@@ -1,12 +1,12 @@
-﻿using Sandbox;
-using System.Collections.Generic;
+﻿using Facepunch.CoreWars;
+using Sandbox;
 
 namespace Facepunch.Voxels
 {
 	public abstract class BlockType : IValid
 	{
-		public byte SourceLighting { get; init; }
-		public VoxelWorld World { get; init; }
+		public byte SourceLighting { get; private set; }
+		public VoxelWorld World { get; private set; }
 		public byte BlockId { get; set; }
 
 		public virtual string Icon => "";
@@ -16,6 +16,7 @@ namespace Facepunch.Voxels
 		public virtual bool HideMesh => false;
 		public virtual bool AttenuatesSunLight => false;
 		public virtual float DetailSpawnChance => 0f;
+		public virtual Color TintColor => Color.White;
 		public virtual float DetailScale => 0f;
 		public virtual string[] DetailModels => null;
 		public virtual bool IsPassable => false;
@@ -37,13 +38,8 @@ namespace Facepunch.Voxels
 
 		public bool IsServer => Host.IsServer;
 		public bool IsClient => Host.IsClient;
+		public uint TintHex { get; private set; }
 		public bool IsValid => true;
-
-		public BlockType()
-		{
-			SourceLighting = (byte)(SourceLightingMultiplier * 8f).CeilToInt().Clamp( 0, 8 );
-			World = VoxelWorld.Current;
-		}
 
 		public virtual string[] GetUniqueAliases()
 		{
@@ -118,7 +114,12 @@ namespace Facepunch.Voxels
 
 		public virtual void Initialize()
 		{
-
+			SourceLighting = (byte)(SourceLightingMultiplier * 8f).CeilToInt().Clamp( 0, 8 );
+			TintHex = Util.ColorToInt( TintColor );
+			World = VoxelWorld.Current;
+			Log.Info( FriendlyName );
+			Log.Info( TintColor );
+			Log.Info( TintHex );
 		}
 
 		protected virtual void OnSpawnDetailModel( ModelEntity entity )

@@ -88,11 +88,6 @@ namespace Facepunch.Voxels
 			}
 		}
 
-		public override void Initialize()
-		{
-
-		}
-
 		private void SpreadToSides( LiquidState state, IntVector3 position, bool withGroundBelow, bool withWaterBelow )
 		{
 			for ( var i = 0; i < 6; i++ )

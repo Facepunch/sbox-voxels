@@ -1,4 +1,5 @@
-﻿using Sandbox;
+﻿using Facepunch.CoreWars.Blocks;
+using Sandbox;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -1069,8 +1070,9 @@ namespace Facepunch.Voxels
 							var textureId = block.GetTextureId( (BlockFace)faceSide, this, x, y, z );
 							var sourceLighting = block.SourceLighting;
 							var normal = (byte)faceSide;
-							var extraData = (uint)((hueShift & 0x3F) << 18);
-							var faceData = (uint)((textureId & 0x1ff) << 18 | (normal & 0x7) << 27);
+							var chunkData = (uint)((hueShift & 0x3F) << 18);
+							var blockData = (uint)((textureId & 0x1ff) << 18 | (normal & 0x7) << 27);
+							var extraData = block.TintHex;
 							var axis = BlockDirectionAxis[faceSide];
 							var uAxis = (axis + 1) % 3;
 							var vAxis = (axis + 2) % 3;
@@ -1091,7 +1093,7 @@ namespace Facepunch.Voxels
 
 								if ( shouldGenerateVertices )
 								{
-									var vertex = new BlockVertex( (uint)(x + vOffset.x), (uint)(y + vOffset.y), (uint)(z + vOffset.z), (uint)x, (uint)y, (uint)z, faceData, extraData );
+									var vertex = new BlockVertex( (uint)(x + vOffset.x), (uint)(y + vOffset.y), (uint)(z + vOffset.z), (uint)x, (uint)y, (uint)z, blockData, chunkData, extraData );
 
 									if ( block.IsTranslucent )
 									{ 
