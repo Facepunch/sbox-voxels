@@ -33,6 +33,7 @@ namespace Facepunch.Voxels
 					}
 				}
 
+				RenderColor = block.TintColor;
 				BlockId = block.BlockId;
 			}
 
