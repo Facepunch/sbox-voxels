@@ -715,6 +715,8 @@ namespace Facepunch.Voxels
 							entity.BlockType = block;
 							SetEntity( localPosition, entity );
 						}
+
+						LightMap?.SetOpaque( localPosition, !block.IsTranslucent );
 					}
 				}
 			}
@@ -781,14 +783,9 @@ namespace Facepunch.Voxels
 
 			if ( blockId != 0 && HasOnlyAirBlocks )
 				HasOnlyAirBlocks = false;
-		}
 
-		public void SetBlock( int index, byte blockId )
-		{
-			Blocks[index] = blockId;
-
-			if ( blockId != 0 && HasOnlyAirBlocks )
-				HasOnlyAirBlocks = false;
+			var block = World.GetBlockType( blockId );
+			LightMap?.SetOpaque( position, !block.IsTranslucent );
 		}
 
 		public void Destroy()

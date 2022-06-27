@@ -117,9 +117,6 @@ namespace Facepunch.Voxels
 			SourceLighting = (byte)(SourceLightingMultiplier * 8f).CeilToInt().Clamp( 0, 8 );
 			TintHex = Util.ColorToInt( TintColor );
 			World = VoxelWorld.Current;
-			Log.Info( FriendlyName );
-			Log.Info( TintColor );
-			Log.Info( TintHex );
 		}
 
 		protected virtual void OnSpawnDetailModel( ModelEntity entity )

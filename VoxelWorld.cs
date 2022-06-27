@@ -1527,7 +1527,7 @@ namespace Facepunch.Voxels
 				chunk.RemoveState( localPosition );
 			}
 
-			chunk.SetBlock( blockIndex, blockId );
+			chunk.SetBlock( localPosition, blockId );
 
 			block.OnBlockAdded( chunk, position, direction );
 

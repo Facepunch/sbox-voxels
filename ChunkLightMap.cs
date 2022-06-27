@@ -95,6 +95,42 @@ namespace Facepunch.Voxels
 			return (byte)((PendingData[index] >> 4) & 0xF);
 		}
 
+		public bool IsOpaque( IntVector3 position )
+		{
+			var index = ToIndex( position, 2 );
+			if ( !IsInBounds( index ) ) return false;
+			return ((byte)((PendingData[index] >> 7) & 0x1) == 1);
+		}
+
+		public bool SetOpaque( IntVector3 position, bool isOpaque )
+		{
+			var index = ToIndex( position, 2 );
+			var otherIndex = ToIndex( position, 3 );
+
+			if ( !IsInBounds( index ) ) return false;
+			if ( IsOpaque( position ) == isOpaque ) return false;
+
+			var value = (byte)(isOpaque ? 1 : 0);
+
+			PendingData[index] = (byte)(((value & 0x1) << 7) | PendingData[index] & 0x80);
+			PendingData[otherIndex] |= 0x40;
+			Data[index] = PendingData[index];
+			Data[otherIndex] = PendingData[otherIndex];
+
+			if ( IsClient )
+			{
+				var baseIndex = ToIndex( position, 0 );
+				var data = new byte[4];
+				data[0] = Data[baseIndex + 0];
+				data[1] = Data[baseIndex + 1];
+				data[2] = Data[baseIndex + 2];
+				data[3] = Data[baseIndex + 3];
+				Texture.Update3D( data, position.x, position.y, position.z, 1, 1, 1 );
+			}
+
+			return true;
+		}
+
 		public byte GetBlockDamage( IntVector3 position )
 		{
 			var index = ToIndex( position, 2 );
