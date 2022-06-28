@@ -43,8 +43,8 @@ namespace Facepunch.Voxels
 
 		public override void ClientSpawn()
 		{
-			BlockType = VoxelWorld.Current.GetBlockType( BlockId );
 			base.ClientSpawn();
+			BlockType = VoxelWorld.Current.GetBlockType( BlockId );
 		}
 
 		public override void OnNewModel( Model model )
@@ -65,7 +65,7 @@ namespace Facepunch.Voxels
 		[Event.Tick.Client]
 		protected virtual void ClientTick()
 		{
-			if ( SceneObject.IsValid() )
+			if ( SceneObject.IsValid() && Chunk.IsValid() )
 			{
 				var r = Chunk.LightMap.GetRedTorchLight( LocalBlockPosition );
 				var g = Chunk.LightMap.GetGreenTorchLight( LocalBlockPosition );

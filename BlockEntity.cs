@@ -2,10 +2,10 @@
 
 namespace Facepunch.Voxels
 {
-	public class BlockEntity : ModelEntity
+	public partial class BlockEntity : ModelEntity
 	{
+		[Net] public IntVector3 BlockPosition { get; set; }
 		public IntVector3 LocalBlockPosition { get; set; }
-		public IntVector3 BlockPosition { get; set; }
 		public BlockType BlockType { get; set; }
 		public Chunk Chunk { get; set; }
 		public VoxelWorld World { get; set; }
@@ -77,6 +77,15 @@ namespace Facepunch.Voxels
 		public virtual void Initialize()
 		{
 			
+		}
+
+		public override void ClientSpawn()
+		{
+			World = VoxelWorld.Current;
+			LocalBlockPosition = World.ToLocalPosition( BlockPosition );
+			Chunk = World.GetChunk( BlockPosition );
+
+			base.ClientSpawn();
 		}
 	}
 }
