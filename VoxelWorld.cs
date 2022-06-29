@@ -1,13 +1,10 @@
-﻿using Facepunch.Voxels;
-using Sandbox;
+﻿using Sandbox;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Text.Json;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Facepunch.Voxels
@@ -23,7 +20,21 @@ namespace Facepunch.Voxels
 		public delegate void OnInitializedCallback();
 		public event OnInitializedCallback OnInitialized;
 
+		private static HashSet<ModelEntity> VoxelModelsEntities { get; set; } = new();
 		public static VoxelWorld Current { get; private set; }
+
+		public static void RegisterVoxelModel( ModelEntity entity )
+		{
+			Host.AssertClient();
+			VoxelModelsEntities.Add( entity );
+			Current?.UpdateVoxelModel( entity );
+		}
+
+		public static void UnregisterVoxelModel( ModelEntity entity )
+		{
+			Host.AssertClient();
+			VoxelModelsEntities.Remove( entity );
+		}
 
 		public static VoxelWorld Create( int seed )
 		{
@@ -432,6 +443,7 @@ namespace Facepunch.Voxels
 			}
 
 			chunk = new Chunk( this, offset.x, offset.y, offset.z );
+			chunk.OnFullUpdate += () => OnChunkUpdated( chunk );
 			
 			if ( IsServer && ChunkGeneratorType != null )
 			{
@@ -1729,6 +1741,45 @@ namespace Facepunch.Voxels
 			distance = length;
 
 			return BlockFace.Invalid;
+		}
+
+		private void OnChunkUpdated( Chunk chunk )
+		{
+			UpdateVoxelModels();
+		}
+
+		private void UpdateVoxelModels()
+		{
+			var entitiesToRemove = new HashSet<ModelEntity>();
+
+			foreach ( var entity in VoxelModelsEntities )
+			{
+				if ( !entity.IsValid() )
+				{
+					entitiesToRemove.Add( entity );
+					continue;
+				}
+
+				UpdateVoxelModel( entity );
+			}
+
+			foreach ( var entity in entitiesToRemove )
+			{
+				VoxelModelsEntities.Remove( entity );
+			}
+		}
+
+		private void UpdateVoxelModel( ModelEntity entity )
+		{
+			var position = ToVoxelPosition( entity.WorldSpaceBounds.Center );
+			var chunk = GetChunk( position );
+			if ( !chunk.IsValid() ) return;
+
+			if ( entity.SceneObject.IsValid() )
+			{
+				var localPosition = ToLocalPosition( position );
+				entity.SceneObject.Attributes.Set( "VoxelLight", chunk.LightMap.GetLightAsVector( localPosition ) );
+			}
 		}
 
 		[Event.Tick.Server]

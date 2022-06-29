@@ -496,6 +496,15 @@ namespace Facepunch.Voxels
 			return (byte)(PendingData[index] & 0xF);
 		}
 
+		public Vector4 GetLightAsVector( IntVector3 position )
+		{
+			var r = GetRedTorchLight( position );
+			var g = GetGreenTorchLight( position );
+			var b = GetBlueTorchLight( position );
+			var s = GetSunLight( position );
+			return new Vector4( r, g, b, s );
+		}
+
 		public bool SetRedTorchLight( IntVector3 position, byte value )
 		{
 			var index = ToIndex( position, 0 );
