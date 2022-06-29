@@ -50,6 +50,8 @@ namespace Facepunch.Voxels
 
 	public partial class Chunk : IValid
 	{
+		public event Action OnFullUpdate;
+
 		public struct ChunkVertexData
 		{
 			public BlockVertex[][] Vertices;
@@ -96,6 +98,7 @@ namespace Facepunch.Voxels
 		private ConcurrentQueue<PhysicsShape> ShapesToDelete { get; set; } = new();
 		private Dictionary<int, BlockEntity> Entities { get; set; }
 		private Dictionary<int, List<Entity>> Details { get; set; }
+		private bool IsFullUpdateEventPending { get; set; }
 		private List<QueuedTick> QueuedTicks { get; set; } = new();
 		private Queue<QueuedTick> TicksToRun { get; set; } = new();
 		private bool IsInitializing { get; set; }
@@ -283,11 +286,14 @@ namespace Facepunch.Voxels
 
 			if ( IsClient )
 			{
-				RunQueuedMeshUpdate();
+				BuildMesh();
+				UpdateAdjacents( true );
 			}
 
 			LightMap.UpdateTexture();
+
 			IsQueuedForFullUpdate = false;
+			IsFullUpdateEventPending = true;
 		}
 
 		public Voxel GetVoxel( IntVector3 position )
@@ -324,10 +330,12 @@ namespace Facepunch.Voxels
 
 			if ( IsClient )
 			{
-				RunQueuedMeshUpdate();
+				BuildMesh();
+				UpdateAdjacents( true );
 			}
 
 			HasDoneFirstFullUpdate = true;
+			IsFullUpdateEventPending = true;
 		}
 
 		public void PerformFullTorchUpdate()
@@ -432,12 +440,6 @@ namespace Facepunch.Voxels
 			{
 				neighbour.QueueFullUpdate();
 			}
-		}
-
-		public void RunQueuedMeshUpdate()
-		{
-			BuildMesh();
-			UpdateAdjacents( true );
 		}
 
 		public void DeserializeBlockState( BinaryReader reader )
@@ -976,7 +978,8 @@ namespace Facepunch.Voxels
 					layer.SceneObject?.Attributes.Set( name, neighbour.LightMap.Texture );
 				}
 
-				if ( recurseNeighbours ) neighbour.UpdateAdjacents();
+				if ( recurseNeighbours )
+					neighbour.UpdateAdjacents();
 			}
 		}
 
@@ -1227,11 +1230,12 @@ namespace Facepunch.Voxels
 			{
 				kv.Value.Tick();
 			}
-		}
 
-		private bool AreAdjacentChunksUpdating()
-		{
-			return GetNeighbours().Any( c => c.IsQueuedForFullUpdate );
+			if ( IsFullUpdateEventPending )
+			{
+				IsFullUpdateEventPending = false;
+				OnFullUpdate?.Invoke();
+			}
 		}
 
 		private void UpdateShapeDeleteQueue()

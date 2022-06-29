@@ -8,6 +8,8 @@ namespace Facepunch.Voxels
 {
 	public class ChunkLightMap
 	{
+		public event Action OnTextureUpdated;
+
 		public Texture Texture { get; private set; }
 		public Chunk Chunk { get; private set; }
 		public bool IsDirty { get; private set; }
@@ -425,6 +427,7 @@ namespace Facepunch.Voxels
 				Array.Copy( PendingData, Data, Data.Length );
 				Texture.Update( PendingData );
 				IsDirty = false;
+				OnTextureUpdated?.Invoke();
 				return true;
 			}
 

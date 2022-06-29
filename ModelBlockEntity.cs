@@ -44,7 +44,13 @@ namespace Facepunch.Voxels
 		public override void ClientSpawn()
 		{
 			base.ClientSpawn();
+
 			BlockType = VoxelWorld.Current.GetBlockType( BlockId );
+
+			if ( Chunk.IsValid() )
+			{
+				Chunk.OnFullUpdate += UpdateAttributes;
+			}
 		}
 
 		public override void OnNewModel( Model model )
@@ -57,13 +63,24 @@ namespace Facepunch.Voxels
 				{
 					SetMaterialOverride( block.ModelOverride.MaterialName );
 				}
+
+				UpdateAttributes();
 			}
 
 			base.OnNewModel( model );
 		}
 
-		[Event.Tick.Client]
-		protected virtual void ClientTick()
+		protected override void OnDestroy()
+		{
+			if ( IsClient && Chunk.IsValid() )
+			{
+				Chunk.OnFullUpdate -= UpdateAttributes;
+			}
+
+			base.OnDestroy();
+		}
+
+		private void UpdateAttributes()
 		{
 			if ( SceneObject.IsValid() && Chunk.IsValid() )
 			{
@@ -71,12 +88,14 @@ namespace Facepunch.Voxels
 				var g = Chunk.LightMap.GetGreenTorchLight( LocalBlockPosition );
 				var b = Chunk.LightMap.GetBlueTorchLight( LocalBlockPosition );
 				var s = Chunk.LightMap.GetSunLight( LocalBlockPosition );
+
 				SceneObject.Attributes.Set( "VoxelLight", new Vector4( r, g, b, s ) );
 				SceneObject.Attributes.Set( "TintColor", BlockType.TintColor );
 
 				var chunkIndex = Chunk.Offset.x * Chunk.SizeY * Chunk.SizeZ + Chunk.Offset.y * Chunk.SizeZ + Chunk.Offset.z;
 				var random = new Random( chunkIndex );
 				var hueShift = (byte)random.Int( Math.Clamp( BlockType.MinHueShift, 0, 64 ), Math.Clamp( BlockType.MaxHueShift, 0, 64 ) );
+
 				SceneObject.Attributes.Set( "HueShift", hueShift );
 			}
 		}
