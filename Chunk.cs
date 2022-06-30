@@ -60,6 +60,14 @@ namespace Facepunch.Voxels
 			public bool IsValid;
 		}
 
+		public struct ChunkBlockUpdate
+		{
+			public byte blockId;
+			public int direction;
+		}
+
+		public Dictionary<IntVector3, ChunkBlockUpdate> OutgoingBlockUpdates { get; private set; } = new();
+		public HashSet<IntVector3> BlockUpdatesToClear { get; private set; } = new();
 		public Dictionary<IntVector3, BlockState> BlockStates { get; set; } = new();
 		public ChunkVertexData UpdateVerticesResult { get; set; }
 		public HashSet<IntVector3> DirtyBlockStates { get; set; } = new();
@@ -407,6 +415,15 @@ namespace Facepunch.Voxels
 
 			chunk = World.GetChunk( GetAdjacentChunkOffset( BlockFace.West ) );
 			if ( chunk.IsValid() ) yield return chunk;
+		}
+
+		public void QueueBlockUpdate( IntVector3 position, byte blockId, int direction )
+		{
+			OutgoingBlockUpdates[position] = new ChunkBlockUpdate
+			{
+				blockId = blockId,
+				direction = direction
+			};
 		}
 
 		public void QueueNeighbourFullUpdate()
@@ -809,6 +826,9 @@ namespace Facepunch.Voxels
 				}
 			}
 
+			OutgoingBlockUpdates.Clear();
+			BlockUpdatesToClear.Clear();
+
 			foreach ( var layer in RenderLayers )
 			{
 				layer?.SceneObject.Delete();
@@ -1143,9 +1163,51 @@ namespace Facepunch.Voxels
 			}
 		}
 
+		private bool IsLoadedForClient( Client client )
+		{
+			var viewer = client.GetChunkViewer();
+			return viewer.IsValid() && viewer.IsChunkLoaded( Offset );
+		}
+
 		[Event.Tick.Server]
 		private void ServerTick()
 		{
+			var clientsToSend = Client.All.Where( IsLoadedForClient );
+
+			if ( OutgoingBlockUpdates.Count > 0 )
+			{
+				using ( var stream = new MemoryStream() )
+				{
+					using ( var writer = new BinaryWriter( stream ) )
+					{
+						var updatesPerTick = OutgoingBlockUpdates.Take( 64 );
+						writer.Write( updatesPerTick.Count() );
+
+						foreach ( var kv in updatesPerTick )
+						{
+							var position = kv.Key;
+							var data = kv.Value;
+							writer.Write( position.x );
+							writer.Write( position.y );
+							writer.Write( position.z );
+							writer.Write( data.blockId );
+							writer.Write( data.direction );
+							BlockUpdatesToClear.Add( position );
+						}
+
+						var compressed = CompressionHelper.Compress( stream.ToArray() );
+						VoxelWorld.ReceiveBlockUpdate( To.Multiple( clientsToSend ), compressed.ToArray() );
+					}
+				}
+
+				foreach ( var position in BlockUpdatesToClear )
+				{
+					OutgoingBlockUpdates.Remove( position );
+				}
+
+				BlockUpdatesToClear.Clear();
+			}
+
 			if ( DirtyBlockStates.Count > 0 )
 			{
 				using ( var stream = new MemoryStream() )
@@ -1173,7 +1235,7 @@ namespace Facepunch.Voxels
 							}
 						}
 
-						VoxelWorld.ReceiveBlockStateUpdate( To.Everyone, Offset.x, Offset.y, Offset.z, stream.ToArray() );
+						VoxelWorld.ReceiveBlockStateUpdate( To.Multiple( clientsToSend ), Offset.x, Offset.y, Offset.z, stream.ToArray() );
 					}
 				}
 			}

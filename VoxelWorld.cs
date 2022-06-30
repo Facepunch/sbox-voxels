@@ -11,12 +11,6 @@ namespace Facepunch.Voxels
 {
 	public partial class VoxelWorld : IValid
 	{
-		public struct ChunkBlockUpdate
-		{
-			public byte blockId;
-			public int direction;
-		}
-
 		public delegate void OnInitializedCallback();
 		public event OnInitializedCallback OnInitialized;
 
@@ -257,8 +251,6 @@ namespace Facepunch.Voxels
 		public List<Vector3> Spawnpoints { get; private set; } = new();
 		public Dictionary<byte, BlockType> BlockData { get; private set; } = new();
 		public Dictionary<string, byte> BlockTypes { get; private set; } = new();
-		public Dictionary<IntVector3,ChunkBlockUpdate> OutgoingBlockUpdates { get; private set; } = new();
-		public HashSet<IntVector3> BlockUpdatesToClear { get; private set; } = new();
 		public Dictionary<byte, Biome> BiomeLookup { get; private set; } = new();
 		public Dictionary<IntVector3, Chunk> Chunks { get; private set; } = new();
 		public bool HasNoDayCycleController { get; private set; } = false;
@@ -963,6 +955,7 @@ namespace Facepunch.Voxels
 
 			if ( SetBlockAndUpdate( position, blockId, direction, false, clearState ) )
 			{
+				var chunk = GetChunk( position );
 				var state = GetState<BlockState>( position );
 
 				if ( state.IsValid() )
@@ -970,11 +963,10 @@ namespace Facepunch.Voxels
 					direction = (int)state.Direction;
 				}
 
-				OutgoingBlockUpdates[position] = new ChunkBlockUpdate
+				if ( chunk.IsValid() )
 				{
-					blockId = blockId,
-					direction = direction
-				};
+					chunk.QueueBlockUpdate( position, blockId, direction );
+				}
 			}
 		}
 
@@ -1109,8 +1101,6 @@ namespace Facepunch.Voxels
 
 			ChunkInitialUpdateQueue.Clear();
 			ChunkFullUpdateQueue.Clear();
-			OutgoingBlockUpdates.Clear();
-			BlockUpdatesToClear.Clear();
 
 			foreach ( var kv in Chunks )
 			{
@@ -1727,40 +1717,6 @@ namespace Facepunch.Voxels
 		private void ServerTick()
 		{
 			if ( IsLoadingFromFile ) return;
-
-			if ( OutgoingBlockUpdates.Count > 0 )
-			{
-				using ( var stream = new MemoryStream() )
-				{
-					using ( var writer = new BinaryWriter( stream ) )
-					{
-						var updatesPerTick = OutgoingBlockUpdates.Take( 512 );
-						writer.Write( updatesPerTick.Count() );
-						
-						foreach ( var kv in updatesPerTick )
-						{
-							var position = kv.Key;
-							var data = kv.Value;
-							writer.Write( position.x );
-							writer.Write( position.y );
-							writer.Write( position.z );
-							writer.Write( data.blockId );
-							writer.Write( data.direction );
-							BlockUpdatesToClear.Add( position );
-						}
-
-						var compressed = CompressionHelper.Compress( stream.ToArray() );
-						ReceiveBlockUpdate( compressed.ToArray() );
-					}
-				}
-
-				foreach ( var position in BlockUpdatesToClear )
-				{
-					OutgoingBlockUpdates.Remove( position );
-				}
-
-				BlockUpdatesToClear.Clear();
-			}
 
 			foreach ( var client in Client.All )
 			{
