@@ -68,6 +68,7 @@ namespace Facepunch.Voxels
 
 		public Dictionary<IntVector3, ChunkBlockUpdate> OutgoingBlockUpdates { get; private set; } = new();
 		public HashSet<IntVector3> BlockUpdatesToClear { get; private set; } = new();
+		public HashSet<IntVector3> StateUpdatesToClear { get; private set; } = new();
 		public Dictionary<IntVector3, BlockState> BlockStates { get; set; } = new();
 		public ChunkVertexData UpdateVerticesResult { get; set; }
 		public HashSet<IntVector3> DirtyBlockStates { get; set; } = new();
@@ -828,6 +829,7 @@ namespace Facepunch.Voxels
 
 			OutgoingBlockUpdates.Clear();
 			BlockUpdatesToClear.Clear();
+			StateUpdatesToClear.Clear();
 
 			foreach ( var layer in RenderLayers )
 			{
@@ -1214,9 +1216,10 @@ namespace Facepunch.Voxels
 				{
 					using ( var writer = new BinaryWriter( stream ) )
 					{
-						writer.Write( DirtyBlockStates.Count );
+						var updatesPerTick = DirtyBlockStates.Take( 64 );
+						writer.Write( updatesPerTick.Count() );
 
-						foreach ( var position in DirtyBlockStates )
+						foreach ( var position in updatesPerTick )
 						{
 							var state = GetState<BlockState>( position );
 
@@ -1233,9 +1236,18 @@ namespace Facepunch.Voxels
 								writer.Write( position.z );
 								writer.Write( (byte)0 );
 							}
+
+							StateUpdatesToClear.Add( position );
 						}
 
 						VoxelWorld.ReceiveBlockStateUpdate( To.Multiple( clientsToSend ), Offset.x, Offset.y, Offset.z, stream.ToArray() );
+
+						foreach ( var position in StateUpdatesToClear )
+						{
+							DirtyBlockStates.Remove( position );
+						}
+
+						StateUpdatesToClear.Clear();
 					}
 				}
 			}
