@@ -102,6 +102,7 @@ namespace Facepunch.Voxels
 		private List<QueuedTick> QueuedTicks { get; set; } = new();
 		private Queue<QueuedTick> TicksToRun { get; set; } = new();
 		private bool IsInitializing { get; set; }
+		private object Lock { get; set; } = new();
 
 		public bool IsValid => Body.IsValid();
 
@@ -277,23 +278,26 @@ namespace Facepunch.Voxels
 
 		public void FullUpdate()
 		{
-			LightMap.UpdateTorchLight();
-			LightMap.UpdateSunLight();
-
-			UpdateVerticesResult = StartUpdateVerticesTask();
-
-			BuildCollision();
-
-			if ( IsClient )
+			lock ( Lock )
 			{
-				BuildMesh();
-				UpdateAdjacents( true );
+				LightMap.UpdateTorchLight();
+				LightMap.UpdateSunLight();
+
+				UpdateVerticesResult = StartUpdateVerticesTask();
+
+				BuildCollision();
+
+				if ( IsClient )
+				{
+					BuildMesh();
+					UpdateAdjacents( true );
+				}
+
+				LightMap.UpdateTexture();
+
+				IsQueuedForFullUpdate = false;
+				IsFullUpdateEventPending = true;
 			}
-
-			LightMap.UpdateTexture();
-
-			IsQueuedForFullUpdate = false;
-			IsFullUpdateEventPending = true;
 		}
 
 		public Voxel GetVoxel( IntVector3 position )
@@ -324,18 +328,21 @@ namespace Facepunch.Voxels
 
 		public void StartFirstFullUpdateTask()
 		{
-			UpdateVerticesResult = StartUpdateVerticesTask();
-
-			BuildCollision();
-
-			if ( IsClient )
+			lock( Lock )
 			{
-				BuildMesh();
-				UpdateAdjacents( true );
-			}
+				UpdateVerticesResult = StartUpdateVerticesTask();
 
-			HasDoneFirstFullUpdate = true;
-			IsFullUpdateEventPending = true;
+				BuildCollision();
+
+				if ( IsClient )
+				{
+					BuildMesh();
+					UpdateAdjacents( true );
+				}
+
+				HasDoneFirstFullUpdate = true;
+				IsFullUpdateEventPending = true;
+			}
 		}
 
 		public void PerformFullTorchUpdate()
@@ -1025,112 +1032,115 @@ namespace Facepunch.Voxels
 
 		public ChunkVertexData StartUpdateVerticesTask()
 		{
-			var output = new ChunkVertexData
+			lock ( Lock )
 			{
-				IsValid = false
-			};
-
-			for ( var i = 0; i < RenderLayers.Count; i++ )
-			{
-				var layer = RenderLayers[i];
-				layer.Vertices.Clear();
-			}
-
-			var collisionVertices = new List<Vector3>();
-			var collisionIndices = new List<int>();
-
-			var faceWidth = 1;
-			var faceHeight = 1;
-
-			var chunkIndex = Offset.x * SizeY * SizeZ + Offset.y * SizeZ + Offset.z;
-			var random = new Random( chunkIndex );
-
-			for ( var x = 0; x < SizeX; x++ )
-			{
-				for ( var y = 0; y < SizeY; y++ )
+				var output = new ChunkVertexData
 				{
-					for ( var z = 0; z < SizeZ; z++ )
+					IsValid = false
+				};
+
+				for ( var i = 0; i < RenderLayers.Count; i++ )
+				{
+					var layer = RenderLayers[i];
+					layer.Vertices.Clear();
+				}
+
+				var collisionVertices = new List<Vector3>();
+				var collisionIndices = new List<int>();
+
+				var faceWidth = 1;
+				var faceHeight = 1;
+
+				var chunkIndex = Offset.x * SizeY * SizeZ + Offset.y * SizeZ + Offset.z;
+				var random = new Random( chunkIndex );
+
+				for ( var x = 0; x < SizeX; x++ )
+				{
+					for ( var y = 0; y < SizeY; y++ )
 					{
-						// We need to check if the game is still running.
-						if ( !Game.Current.IsValid() ) break;
-
-						var position = new IntVector3( x, y, z );
-						var index = x * SizeY * SizeZ + y * SizeZ + z;
-						var blockId = Blocks[index];
-						if ( blockId == 0 ) continue;
-
-						var block = World.GetBlockType( blockId );
-						var hueShift = (byte)random.Int( Math.Clamp( block.MinHueShift, 0, 64 ), Math.Clamp( block.MaxHueShift, 0, 64 ) );
-
-						for ( int faceSide = 0; faceSide < 6; faceSide++ )
+						for ( var z = 0; z < SizeZ; z++ )
 						{
-							var neighbourId = World.GetAdjacentBlock( Offset + position, faceSide );
-							var neighbourBlock = World.GetBlockType( neighbourId );
-							var collisionIndex = collisionIndices.Count;
-							var textureId = block.GetTextureId( (BlockFace)faceSide, this, x, y, z );
-							var sourceLighting = block.SourceLighting;
-							var normal = (byte)faceSide;
-							var chunkData = (uint)((hueShift & 0x3F) << 18);
-							var blockData = (uint)((textureId & 0x1ff) << 18 | (normal & 0x7) << 27);
-							var extraData = block.TintHex;
-							var axis = BlockDirectionAxis[faceSide];
-							var uAxis = (axis + 1) % 3;
-							var vAxis = (axis + 2) % 3;
+							// We need to check if the game is still running.
+							if ( !Game.Current.IsValid() ) break;
 
-							var shouldGenerateVertices = IsClient && !block.HideMesh && neighbourBlock.IsTranslucent && !block.ShouldCullFace( (BlockFace)faceSide, neighbourBlock );
-							var shouldGenerateCollision = !block.IsPassable && neighbourBlock.IsPassable;
+							var position = new IntVector3( x, y, z );
+							var index = x * SizeY * SizeZ + y * SizeZ + z;
+							var blockId = Blocks[index];
+							if ( blockId == 0 ) continue;
 
-							if ( !shouldGenerateCollision && !shouldGenerateVertices )
-								continue;
+							var block = World.GetBlockType( blockId );
+							var hueShift = (byte)random.Int( Math.Clamp( block.MinHueShift, 0, 64 ), Math.Clamp( block.MaxHueShift, 0, 64 ) );
 
-							for ( int i = 0; i < 6; ++i )
+							for ( int faceSide = 0; faceSide < 6; faceSide++ )
 							{
-								var vi = BlockIndices[(faceSide * 6) + i];
-								var vOffset = BlockVertices[vi];
+								var neighbourId = World.GetAdjacentBlock( Offset + position, faceSide );
+								var neighbourBlock = World.GetBlockType( neighbourId );
+								var collisionIndex = collisionIndices.Count;
+								var textureId = block.GetTextureId( (BlockFace)faceSide, this, x, y, z );
+								var sourceLighting = block.SourceLighting;
+								var normal = (byte)faceSide;
+								var chunkData = (uint)((hueShift & 0x3F) << 18);
+								var blockData = (uint)((textureId & 0x1ff) << 18 | (normal & 0x7) << 27);
+								var extraData = block.TintHex;
+								var axis = BlockDirectionAxis[faceSide];
+								var uAxis = (axis + 1) % 3;
+								var vAxis = (axis + 2) % 3;
 
-								vOffset[uAxis] *= faceWidth;
-								vOffset[vAxis] *= faceHeight;
+								var shouldGenerateVertices = IsClient && !block.HideMesh && neighbourBlock.IsTranslucent && !block.ShouldCullFace( (BlockFace)faceSide, neighbourBlock );
+								var shouldGenerateCollision = !block.IsPassable && neighbourBlock.IsPassable;
 
-								if ( shouldGenerateVertices )
+								if ( !shouldGenerateCollision && !shouldGenerateVertices )
+									continue;
+
+								for ( int i = 0; i < 6; ++i )
 								{
-									var vertex = new BlockVertex( (uint)(x + vOffset.x), (uint)(y + vOffset.y), (uint)(z + vOffset.z), (uint)x, (uint)y, (uint)z, blockData, chunkData, extraData );
+									var vi = BlockIndices[(faceSide * 6) + i];
+									var vOffset = BlockVertices[vi];
 
-									if ( block.IsTranslucent )
-									{ 
-										if ( block.UseTransparency )
-											TranslucentLayer.Vertices.Add( vertex );
-										else
-											AlphaTestLayer.Vertices.Add( vertex );
-									}
-									else
+									vOffset[uAxis] *= faceWidth;
+									vOffset[vAxis] *= faceHeight;
+
+									if ( shouldGenerateVertices )
 									{
-										OpaqueLayer.Vertices.Add( vertex );
-									}
-								}
+										var vertex = new BlockVertex( (uint)(x + vOffset.x), (uint)(y + vOffset.y), (uint)(z + vOffset.z), (uint)x, (uint)y, (uint)z, blockData, chunkData, extraData );
 
-								if ( shouldGenerateCollision )
-								{
-									collisionVertices.Add( new Vector3( (x + vOffset.x) + Offset.x, (y + vOffset.y) + Offset.y, (z + vOffset.z) + Offset.z ) * VoxelSize );
-									collisionIndices.Add( collisionIndex + i );
+										if ( block.IsTranslucent )
+										{
+											if ( block.UseTransparency )
+												TranslucentLayer.Vertices.Add( vertex );
+											else
+												AlphaTestLayer.Vertices.Add( vertex );
+										}
+										else
+										{
+											OpaqueLayer.Vertices.Add( vertex );
+										}
+									}
+
+									if ( shouldGenerateCollision )
+									{
+										collisionVertices.Add( new Vector3( (x + vOffset.x) + Offset.x, (y + vOffset.y) + Offset.y, (z + vOffset.z) + Offset.z ) * VoxelSize );
+										collisionIndices.Add( collisionIndex + i );
+									}
 								}
 							}
 						}
 					}
 				}
+
+				output.Vertices = new BlockVertex[RenderLayers.Count][];
+
+				for ( var i = 0; i < RenderLayers.Count; i++ )
+				{
+					output.Vertices[i] = RenderLayers[i].Vertices.ToArray();
+				}
+
+				output.CollisionVertices = collisionVertices.ToArray();
+				output.CollisionIndices = collisionIndices.ToArray();
+				output.IsValid = true;
+
+				return output;
 			}
-
-			output.Vertices = new BlockVertex[RenderLayers.Count][];
-
-			for ( var i = 0; i < RenderLayers.Count; i++ )
-			{
-				output.Vertices[i] = RenderLayers[i].Vertices.ToArray();
-			}
-
-			output.CollisionVertices = collisionVertices.ToArray();
-			output.CollisionIndices = collisionIndices.ToArray();
-			output.IsValid = true;
-
-			return output;
 		}
 
 		[Event.Tick.Server]
