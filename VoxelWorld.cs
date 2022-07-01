@@ -87,7 +87,7 @@ namespace Facepunch.Voxels
 						TranslucentMaterial = translucentMaterial
 					};
 
-					Current.LoadBlockAtlasFromJson( reader.ReadString() );
+					Current.LoadBlockAtlasFromJson( reader.ReadString(), reader.ReadString() );
 
 					var types = reader.ReadInt32();
 
@@ -272,7 +272,7 @@ namespace Facepunch.Voxels
 			}
 		}
 
-		public BlockAtlas BlockAtlas { get; private set; }
+		public IBlockAtlasProvider BlockAtlas { get; private set; }
 		public IntVector3 MaxSize { get; private set; }
 		public string OpaqueMaterial { get; private set; }
 		public string TranslucentMaterial { get; private set; }
@@ -298,6 +298,7 @@ namespace Facepunch.Voxels
 		private ConcurrentQueue<Chunk> ChunkFullUpdateQueue = new ConcurrentQueue<Chunk>();
 
 		private string BlockAtlasFileName { get; set; }
+		private string BlockAtlasType { get; set; }
 		private byte NextAvailableBlockId { get; set; }
 		private byte NextAvailableBiomeId { get; set; }
 		private Type ChunkGeneratorType { get; set; }
@@ -501,6 +502,7 @@ namespace Facepunch.Voxels
 					writer.Write( OpaqueMaterial );
 					writer.Write( TranslucentMaterial );
 					writer.Write( BlockAtlas.Json );
+					writer.Write( BlockAtlasType );
 					writer.Write( BlockData.Count - 1 );
 
 					foreach ( var kv in BlockData )
@@ -978,12 +980,17 @@ namespace Facepunch.Voxels
 				return 0;
 		}
 
-		public void LoadBlockAtlasFromJson( string json )
+		public void LoadBlockAtlasFromJson( string json, string provider )
 		{
 			if ( BlockAtlas != null )
 				throw new Exception( "Unable to load a block atlas as one is already loaded for this world!" );
 
-			BlockAtlas = JsonSerializer.Deserialize<BlockAtlas>( json );
+			Log.Info( json );
+			Log.Info( provider );
+
+			var type = TypeLibrary.GetTypeByName( provider );
+
+			BlockAtlas = (IBlockAtlasProvider)JsonSerializer.Deserialize( json, type );
 			BlockAtlas.Initialize( json );
 		}
 
@@ -993,10 +1000,24 @@ namespace Facepunch.Voxels
 				throw new Exception( "Unable to load a block atlas as one is already loaded for this world!" );
 
 			BlockAtlasFileName = fileName;
-			BlockAtlas = FileSystem.Mounted.ReadJsonOrDefault<BlockAtlas>( fileName );
 
-			string jsonString = JsonSerializer.Serialize( BlockAtlas );
+			string jsonString;
+
+			if ( fileName.EndsWith( "json" ) )
+			{
+				BlockAtlas = FileSystem.Mounted.ReadJsonOrDefault<BlockAtlasTexturePacker>( fileName );
+				jsonString = JsonSerializer.Serialize( (BlockAtlasTexturePacker)BlockAtlas);
+			}
+			else
+			{
+				BlockAtlas = FileSystem.Mounted.ReadJsonOrDefault<BlockAtlas>( fileName );
+				jsonString = JsonSerializer.Serialize( (BlockAtlas)BlockAtlas);
+			}
+
+			BlockAtlasType = BlockAtlas.GetType().Name;
 			BlockAtlas.Initialize( jsonString );
+
+			Log.Info( jsonString );
 		}
 
 		public void AddBlockType( BlockType type )
