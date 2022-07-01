@@ -639,6 +639,9 @@ namespace Facepunch.Voxels
 			if ( !IsInside( position ) )
 				return;
 
+			var shouldSendStateUpdate = false;
+			var didHaveBlockState = false;
+
 			if ( BlockStates.TryGetValue( position, out var oldState ) )
 			{
 				if ( oldState == state ) return;
@@ -647,6 +650,8 @@ namespace Facepunch.Voxels
 				{
 					oldState.OnRemoved();
 				}
+
+				didHaveBlockState = true;
 			}
 
 			if ( state.IsValid() )
@@ -654,13 +659,18 @@ namespace Facepunch.Voxels
 				state = (T)state.Copy();
 				state.LocalPosition = position;
 				BlockStates[position] = state;
+				shouldSendStateUpdate = true;
 			}
-			else
+			else if ( didHaveBlockState )
 			{
 				BlockStates.Remove( position );
+				shouldSendStateUpdate = true;
 			}
 
-			DirtyBlockStates.Add( position );
+			if ( shouldSendStateUpdate )
+			{
+				DirtyBlockStates.Add( position );
+			}
 		}
 
 		public int GetLocalPositionIndex( int x, int y, int z )

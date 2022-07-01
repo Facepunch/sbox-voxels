@@ -280,8 +280,8 @@ namespace Facepunch.Voxels
 		public int ChunkRenderDistance { get; private set; }
 		public int ChunkUnloadDistance { get; private set; }
 		public bool IsLoadingFromFile { get; private set; }
-		public IntVector3 ChunkSize { get; private set; } = new IntVector3( 32, 32, 32 );
-		public int VoxelSize { get; private set; } = 48;
+		public IntVector3 ChunkSize = new IntVector3( 32, 32, 32 );
+		public int VoxelSize = 48;
 		public bool Initialized { get; private set; }
 		public int SeaLevel { get; private set; }
 		public int Seed { get; private set; }
@@ -297,7 +297,6 @@ namespace Facepunch.Voxels
 		private ConcurrentQueue<Chunk> ChunkInitialUpdateQueue = new ConcurrentQueue<Chunk>();
 		private ConcurrentQueue<Chunk> ChunkFullUpdateQueue = new ConcurrentQueue<Chunk>();
 
-		private string BlockAtlasFileName { get; set; }
 		private string BlockAtlasType { get; set; }
 		private byte NextAvailableBlockId { get; set; }
 		private byte NextAvailableBiomeId { get; set; }
@@ -372,7 +371,7 @@ namespace Facepunch.Voxels
 
 		public void AddToFullUpdateList( Chunk chunk )
 		{
-			if ( !ChunkFullUpdateQueue.Contains( chunk ) )
+			if ( !chunk.IsQueuedForFullUpdate )
 			{
 				ChunkFullUpdateQueue.Enqueue( chunk );
 			}
@@ -998,8 +997,6 @@ namespace Facepunch.Voxels
 		{
 			if ( BlockAtlas != null )
 				throw new Exception( "Unable to load a block atlas as one is already loaded for this world!" );
-
-			BlockAtlasFileName = fileName;
 
 			string jsonString;
 
