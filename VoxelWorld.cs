@@ -1003,16 +1003,8 @@ namespace Facepunch.Voxels
 
 			string jsonString;
 
-			if ( fileName.EndsWith( "json" ) )
-			{
-				BlockAtlas = FileSystem.Mounted.ReadJsonOrDefault<BlockAtlasTexturePacker>( fileName );
-				jsonString = JsonSerializer.Serialize( (BlockAtlasTexturePacker)BlockAtlas);
-			}
-			else
-			{
-				BlockAtlas = FileSystem.Mounted.ReadJsonOrDefault<BlockAtlas>( fileName );
-				jsonString = JsonSerializer.Serialize( (BlockAtlas)BlockAtlas);
-			}
+			BlockAtlas = FileSystem.Mounted.ReadJsonOrDefault<BlockAtlas>( fileName );
+			jsonString = JsonSerializer.Serialize( (BlockAtlas)BlockAtlas );
 
 			BlockAtlasType = BlockAtlas.GetType().Name;
 			BlockAtlas.Initialize( jsonString );
