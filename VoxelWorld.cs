@@ -248,11 +248,12 @@ namespace Facepunch.Voxels
 			return new IntVector3( (int)fPosition.x, (int)fPosition.y, (int)fPosition.z );
 		}
 
-		public List<Vector3> Spawnpoints { get; private set; } = new();
+		public ConcurrentQueue<Vector3> SpawnpointsQueue { get; private set; } = new();
 		public Dictionary<byte, BlockType> BlockData { get; private set; } = new();
 		public Dictionary<string, byte> BlockTypes { get; private set; } = new();
 		public Dictionary<byte, Biome> BiomeLookup { get; private set; } = new();
 		public Dictionary<IntVector3, Chunk> Chunks { get; private set; } = new();
+		public List<Vector3> Spawnpoints { get; private set; } = new();
 		public bool HasNoDayCycleController { get; private set; } = false;
 		public float GlobalOpacity { get; set; } = 1f;
 		public List<Biome> Biomes { get; private set; } = new();
@@ -1733,6 +1734,14 @@ namespace Facepunch.Voxels
 				if ( client.Components.TryGet<ChunkViewer>( out var viewer ) )
 				{
 					viewer.Update();
+				}
+			}
+
+			while ( SpawnpointsQueue.Count > 0 )
+			{
+				if ( SpawnpointsQueue.TryDequeue( out var position ) )
+				{
+					Spawnpoints.Add( position );
 				}
 			}
 		}

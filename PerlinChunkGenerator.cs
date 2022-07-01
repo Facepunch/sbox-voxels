@@ -108,7 +108,7 @@ namespace Facepunch.Voxels
 								else if ( VoxelWorld.Spawnpoints.Count == 0 || Rand.Float() <= 0.1f )
 								{
 									var spawnPositionSource = VoxelWorld.ToSourcePositionCenter( offset + position + new IntVector3( 0, 0, 1 ) );
-									VoxelWorld.Spawnpoints.Add( spawnPositionSource );
+									VoxelWorld.SpawnpointsQueue.Enqueue( spawnPositionSource );
 								}
 							}
 						}
