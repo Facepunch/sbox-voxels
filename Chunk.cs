@@ -957,12 +957,15 @@ namespace Facepunch.Voxels
 
 			if ( collisionVertices.Length > 0 && collisionIndices.Length > 0 )
 			{
-				Shape = Body.AddMeshShape( collisionVertices, collisionIndices );
+				if ( Shape.IsValid() )
+					Shape.UpdateMesh( collisionVertices, collisionIndices );
+				else
+					Shape = Body.AddMeshShape( collisionVertices, collisionIndices );
 			}
 
 			if ( oldShape.IsValid() )
 			{
-				ShapesToDelete.Enqueue( oldShape );
+				//ShapesToDelete.Enqueue( oldShape );
 			}
 		}
 
@@ -1297,17 +1300,20 @@ namespace Facepunch.Voxels
 		[Event.Tick]
 		private void Tick()
 		{
-			if ( VertexUpdateQueue.TryDequeue( out var update ) )
+			lock ( Lock )
 			{
-				BuildCollision( update );
-
-				if ( IsClient )
+				if ( VertexUpdateQueue.TryDequeue( out var update ) )
 				{
-					BuildMesh( update );
-					UpdateAdjacents( true );
-				}
+					BuildCollision( update );
 
-				LightMap.UpdateTexture();
+					if ( IsClient )
+					{
+						BuildMesh( update );
+						UpdateAdjacents( true );
+					}
+
+					LightMap.UpdateTexture();
+				}
 			}
 
 			UpdateShapeDeleteQueue();

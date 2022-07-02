@@ -349,7 +349,7 @@ namespace Facepunch.Voxels
 
 		public void AddToFullUpdateList( Chunk chunk )
 		{
-			if ( !chunk.IsQueuedForFullUpdate )
+			if ( !ChunkFullUpdateQueue.Contains( chunk ) )
 			{
 				ChunkFullUpdateQueue.Enqueue( chunk );
 			}
