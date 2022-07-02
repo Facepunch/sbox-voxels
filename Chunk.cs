@@ -60,17 +60,16 @@ namespace Facepunch.Voxels
 			public bool IsValid;
 		}
 
-		public struct OutgoingBlockUpdate
+		public struct ChunkBlockUpdate
 		{
 			public byte BlockId;
 			public int Direction;
 		}
 
-		public Dictionary<IntVector3, OutgoingBlockUpdate> OutgoingBlockUpdates { get; private set; } = new();
+		public Dictionary<IntVector3, ChunkBlockUpdate> OutgoingBlockUpdates { get; private set; } = new();
 		public HashSet<IntVector3> BlockUpdatesToClear { get; private set; } = new();
 		public HashSet<IntVector3> StateUpdatesToClear { get; private set; } = new();
 		public Dictionary<IntVector3, BlockState> BlockStates { get; set; } = new();
-		public ConcurrentQueue<ChunkVertexData> VertexUpdateQueue { get; set; } = new();
 		public ChunkVertexData UpdateVerticesResult { get; set; }
 		public HashSet<IntVector3> DirtyBlockStates { get; set; } = new();
 		public bool IsQueuedForFullUpdate { get; set; }
@@ -111,6 +110,7 @@ namespace Facepunch.Voxels
 		private bool IsFullUpdateEventPending { get; set; }
 		private List<QueuedTick> QueuedTicks { get; set; } = new();
 		private Queue<QueuedTick> TicksToRun { get; set; } = new();
+		private bool ShouldUpdateLightMap { get; set; }
 		private bool IsInitializing { get; set; }
 		private object Lock { get; set; } = new();
 
@@ -293,9 +293,17 @@ namespace Facepunch.Voxels
 				LightMap.UpdateTorchLight();
 				LightMap.UpdateSunLight();
 
-				var update = StartUpdateVerticesTask();
-				VertexUpdateQueue.Enqueue( update );
+				UpdateVerticesResult = StartUpdateVerticesTask();
 
+				BuildCollision();
+
+				if ( IsClient )
+				{
+					BuildMesh();
+					UpdateAdjacents( true );
+				}
+
+				ShouldUpdateLightMap = true;
 				IsQueuedForFullUpdate = false;
 				IsFullUpdateEventPending = true;
 			}
@@ -331,8 +339,15 @@ namespace Facepunch.Voxels
 		{
 			lock( Lock )
 			{
-				var update = StartUpdateVerticesTask();
-				VertexUpdateQueue.Enqueue( update );
+				UpdateVerticesResult = StartUpdateVerticesTask();
+
+				BuildCollision();
+
+				if ( IsClient )
+				{
+					BuildMesh();
+					UpdateAdjacents( true );
+				}
 
 				HasDoneFirstFullUpdate = true;
 				IsFullUpdateEventPending = true;
@@ -405,7 +420,7 @@ namespace Facepunch.Voxels
 
 		public void QueueBlockUpdate( IntVector3 position, byte blockId, int direction )
 		{
-			OutgoingBlockUpdates[position] = new OutgoingBlockUpdate
+			OutgoingBlockUpdates[position] = new ChunkBlockUpdate
 			{
 				BlockId = blockId,
 				Direction = direction
@@ -946,41 +961,38 @@ namespace Facepunch.Voxels
 			}
 		}
 
-		public void BuildCollision( ChunkVertexData data )
+		public void BuildCollision()
 		{
-			if ( !data.IsValid ) return;
+			if ( !UpdateVerticesResult.IsValid ) return;
 			if ( !Body.IsValid() ) return;
 
-			var collisionVertices = data.CollisionVertices;
-			var collisionIndices = data.CollisionIndices;
+			var collisionVertices = UpdateVerticesResult.CollisionVertices;
+			var collisionIndices = UpdateVerticesResult.CollisionIndices;
 			var oldShape = Shape;
 
 			if ( collisionVertices.Length > 0 && collisionIndices.Length > 0 )
 			{
-				if ( Shape.IsValid() )
-					Shape.UpdateMesh( collisionVertices, collisionIndices );
-				else
-					Shape = Body.AddMeshShape( collisionVertices, collisionIndices );
+				Shape = Body.AddMeshShape( collisionVertices, collisionIndices );
 			}
 
 			if ( oldShape.IsValid() )
 			{
-				//ShapesToDelete.Enqueue( oldShape );
+				ShapesToDelete.Enqueue( oldShape );
 			}
 		}
 
-		public void BuildMesh( ChunkVertexData data )
+		public void BuildMesh()
 		{
 			Host.AssertClient();
 
-			if ( !data.IsValid ) return;
+			if ( !UpdateVerticesResult.IsValid ) return;
 
 			for ( int i = 0; i < RenderLayers.Count; i++ )
 			{
 				var layer = RenderLayers[i];
 				if ( !layer.Mesh.IsValid ) continue;
 
-				var vertices = data.Vertices[i];
+				var vertices = UpdateVerticesResult.Vertices[i];
 				var vertexCount = vertices.Length;
 
 				if ( vertexCount > 0 )
@@ -1300,22 +1312,6 @@ namespace Facepunch.Voxels
 		[Event.Tick]
 		private void Tick()
 		{
-			lock ( Lock )
-			{
-				if ( VertexUpdateQueue.TryDequeue( out var update ) )
-				{
-					BuildCollision( update );
-
-					if ( IsClient )
-					{
-						BuildMesh( update );
-						UpdateAdjacents( true );
-					}
-
-					LightMap.UpdateTexture();
-				}
-			}
-
 			UpdateShapeDeleteQueue();
 
 			var statesToTick = BlockStates.Where( kv =>
@@ -1327,6 +1323,12 @@ namespace Facepunch.Voxels
 			foreach ( var kv in statesToTick )
 			{
 				kv.Value.Tick();
+			}
+
+			if ( ShouldUpdateLightMap )
+			{
+				ShouldUpdateLightMap = false;
+				LightMap.UpdateTexture();
 			}
 
 			if ( IsFullUpdateEventPending )
