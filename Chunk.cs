@@ -1297,20 +1297,17 @@ namespace Facepunch.Voxels
 		[Event.Tick]
 		private void Tick()
 		{
-			while ( VertexUpdateQueue.Count > 0 )
+			if ( VertexUpdateQueue.TryDequeue( out var update ) )
 			{
-				if ( VertexUpdateQueue.TryDequeue( out var update ) )
+				BuildCollision( update );
+
+				if ( IsClient )
 				{
-					BuildCollision( update );
-
-					if ( IsClient )
-					{
-						BuildMesh( update );
-						UpdateAdjacents( true );
-					}
-
-					LightMap.UpdateTexture();
+					BuildMesh( update );
+					UpdateAdjacents( true );
 				}
+
+				LightMap.UpdateTexture();
 			}
 
 			UpdateShapeDeleteQueue();
