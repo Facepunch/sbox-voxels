@@ -105,6 +105,7 @@ namespace Facepunch.Voxels
 		public PhysicsShape Shape;
 
 		private ConcurrentQueue<PhysicsShape> ShapesToDelete { get; set; } = new();
+		private ConcurrentQueue<BlockVertex[][]> VertexUpdateQueue { get; set; } = new();
 		private Dictionary<int, BlockEntity> Entities { get; set; }
 		private Dictionary<int, List<Entity>> Details { get; set; }
 		private bool IsFullUpdateEventPending { get; set; }
@@ -299,8 +300,7 @@ namespace Facepunch.Voxels
 
 				if ( IsClient )
 				{
-					BuildMesh();
-					UpdateAdjacents( true );
+					VertexUpdateQueue.Enqueue( UpdateVerticesResult.Vertices );
 				}
 
 				ShouldUpdateLightMap = true;
@@ -345,8 +345,7 @@ namespace Facepunch.Voxels
 
 				if ( IsClient )
 				{
-					BuildMesh();
-					UpdateAdjacents( true );
+					VertexUpdateQueue.Enqueue( UpdateVerticesResult.Vertices );
 				}
 
 				HasDoneFirstFullUpdate = true;
@@ -981,18 +980,16 @@ namespace Facepunch.Voxels
 			}
 		}
 
-		public void BuildMesh()
+		public void SetMeshVertices( BlockVertex[][] data )
 		{
 			Host.AssertClient();
-
-			if ( !UpdateVerticesResult.IsValid ) return;
 
 			for ( int i = 0; i < RenderLayers.Count; i++ )
 			{
 				var layer = RenderLayers[i];
 				if ( !layer.Mesh.IsValid ) continue;
 
-				var vertices = UpdateVerticesResult.Vertices[i];
+				var vertices = data[i];
 				var vertexCount = vertices.Length;
 
 				if ( vertexCount > 0 )
@@ -1307,6 +1304,18 @@ namespace Facepunch.Voxels
 			{
 				viewer.AddLoadedChunk( Offset );
 			}
+
+			if ( VertexUpdateQueue.TryDequeue( out var update ) )
+			{
+				SetMeshVertices( update );
+				UpdateAdjacents( true );
+			}
+
+			if ( ShouldUpdateLightMap )
+			{
+				ShouldUpdateLightMap = false;
+				LightMap.UpdateTexture();
+			}
 		}
 
 		[Event.Tick]
@@ -1323,12 +1332,6 @@ namespace Facepunch.Voxels
 			foreach ( var kv in statesToTick )
 			{
 				kv.Value.Tick();
-			}
-
-			if ( ShouldUpdateLightMap )
-			{
-				ShouldUpdateLightMap = false;
-				LightMap.UpdateTexture();
 			}
 
 			if ( IsFullUpdateEventPending )

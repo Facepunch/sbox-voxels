@@ -53,6 +53,7 @@ namespace Facepunch.Voxels
 			if ( IsClient )
 			{
 				Texture = Texture.CreateVolume( ChunkSizeX, ChunkSizeY, ChunkSizeZ )
+					.WithMips( 0 )
 					.WithFormat( ImageFormat.R32F )
 					.WithData( Data )
 					.Finish();
@@ -425,7 +426,7 @@ namespace Facepunch.Voxels
 			if ( IsClient && (IsDirty || forceUpdate) )
 			{
 				Array.Copy( PendingData, Data, Data.Length );
-				Texture.Update( PendingData );
+				Texture.Update( Data );
 				IsDirty = false;
 				OnTextureUpdated?.Invoke();
 				return true;
@@ -547,7 +548,7 @@ namespace Facepunch.Voxels
 			if ( !IsInBounds( index ) ) return false;
 			if ( GetBlueTorchLight( position ) == value ) return false;
 			IsDirty = true;
-			PendingData[index] = (byte)((Data[index] & 0xF0) | (value & 0xF));
+			PendingData[index] = (byte)((PendingData[index] & 0xF0) | (value & 0xF));
 			PendingData[ToIndex( position, 3 )] |= 0x40;
 			return true;
 		}
