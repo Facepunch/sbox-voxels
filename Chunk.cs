@@ -110,6 +110,7 @@ namespace Facepunch.Voxels
 		private bool IsFullUpdateEventPending { get; set; }
 		private List<QueuedTick> QueuedTicks { get; set; } = new();
 		private Queue<QueuedTick> TicksToRun { get; set; } = new();
+		private bool ShouldUpdateLightMap { get; set; }
 		private bool IsInitializing { get; set; }
 		private object Lock { get; set; } = new();
 
@@ -302,8 +303,7 @@ namespace Facepunch.Voxels
 					UpdateAdjacents( true );
 				}
 
-				LightMap.UpdateTexture();
-
+				ShouldUpdateLightMap = true;
 				IsQueuedForFullUpdate = false;
 				IsFullUpdateEventPending = true;
 			}
@@ -1323,6 +1323,12 @@ namespace Facepunch.Voxels
 			foreach ( var kv in statesToTick )
 			{
 				kv.Value.Tick();
+			}
+
+			if ( ShouldUpdateLightMap )
+			{
+				ShouldUpdateLightMap = false;
+				LightMap.UpdateTexture();
 			}
 
 			if ( IsFullUpdateEventPending )

@@ -154,67 +154,25 @@ namespace Facepunch.Voxels
 		{
 			var decompressed = CompressionHelper.Decompress( data );
 
-			using ( var stream = new MemoryStream( decompressed ) )
+			if ( Current.IsValid() )
 			{
-				using ( var reader = new BinaryReader( stream ) )
-				{
-					var count = reader.ReadInt32();
-					var chunksToUpdate = new HashSet<Chunk>();
-
-					for ( var i = 0; i < count; i++ )
-					{
-						var x = reader.ReadInt32();
-						var y = reader.ReadInt32();
-						var z = reader.ReadInt32();
-						var blockId = reader.ReadByte();
-						var direction = reader.ReadInt32();
-						var position = new IntVector3( x, y, z );
-
-						if ( Current.SetBlock( position, blockId, direction ) )
-						{
-							var chunk = Current.GetChunk( position );
-							chunksToUpdate.Add( chunk );
-
-							for ( int j = 0; j < 6; j++ )
-							{
-								var adjacentPosition = GetAdjacentPosition( position, j );
-								var adjacentChunk = Current.GetChunk( adjacentPosition );
-
-								if ( adjacentChunk.IsValid() )
-								{
-									chunksToUpdate.Add( adjacentChunk );
-								}
-							}
-						}
-					}
-
-					foreach ( var chunk in chunksToUpdate )
-					{
-						chunk.QueueFullUpdate();
-					}
-				}
+				Current.BlockUpdateQueue.Enqueue( decompressed );
 			}
 		}
 
 		[ClientRpc]
 		public static void ReceiveBlockStateUpdate( int x, int y, int z, byte[] data )
 		{
-			if ( Current == null ) return;
-
-			var position = new IntVector3( x, y, z );
-			var chunk = Current.GetChunk( position );
-
-			if ( chunk.IsValid() )
+			if ( Current.IsValid() )
 			{
-				chunk.DeserializeBlockStates( data );
+				Current.StateUpdateQueue.Enqueue( new StateUpdate
+				{
+					x = x,
+					y = y,
+					z = z,
+					Data = data.ToArray()
+				} );
 			}
-		}
-
-		[ClientRpc]
-		public static void SetBlockOnClient( int x, int y, int z, byte blockId, int direction )
-		{
-			Host.AssertClient();
-			Current?.SetBlockAndUpdate( new IntVector3( x, y, z ), blockId, direction, true );
 		}
 
 		public BBox ToSourceBBox( IntVector3 position )
@@ -298,6 +256,25 @@ namespace Facepunch.Voxels
 		private ConcurrentQueue<Chunk> ChunkInitialUpdateQueue = new ConcurrentQueue<Chunk>();
 		private ConcurrentQueue<Chunk> ChunkFullUpdateQueue = new ConcurrentQueue<Chunk>();
 
+		private struct BlockUpdate
+		{
+			public byte BlockId;
+			public int Direction;
+		}
+
+		private struct StateUpdate
+		{
+			public byte[] Data;
+			public int x;
+			public int y;
+			public int z;
+		}
+
+		private Queue<byte[]> BlockUpdateQueue { get; set; } = new();
+		private Queue<byte[]> ChunkUpdateQueue { get; set; } = new();
+		private Queue<StateUpdate> StateUpdateQueue { get; set; } = new();
+
+		private Dictionary<IntVector3, BlockUpdate> BlockUpdateMap { get; set; } = new();
 		private string BlockAtlasType { get; set; }
 		private byte NextAvailableBlockId { get; set; }
 		private byte NextAvailableBiomeId { get; set; }
@@ -1045,30 +1022,9 @@ namespace Facepunch.Voxels
 		{
 			var decompressed = CompressionHelper.Decompress( data );
 
-			using ( var stream = new MemoryStream( decompressed ) )
+			if ( Current.IsValid() )
 			{
-				using ( var reader = new BinaryReader( stream ) )
-				{
-					var count = reader.ReadInt32();
-
-					for ( var i = 0; i < count; i++ )
-					{
-						var x = reader.ReadInt32();
-						var y = reader.ReadInt32();
-						var z = reader.ReadInt32();
-
-						var chunk = Current.GetOrCreateChunk( new IntVector3( x, y, z ) );
-						chunk.HasOnlyAirBlocks = reader.ReadBoolean();
-
-						if ( !chunk.HasOnlyAirBlocks )
-							chunk.Blocks = reader.ReadBytes( chunk.Blocks.Length );
-
-						chunk.LightMap.Deserialize( reader );
-						chunk.DeserializeBlockStates( reader );
-
-						_ = chunk.Initialize();
-					}
-				}
+				Current.ChunkUpdateQueue.Enqueue( decompressed );
 			}
 		}
 
@@ -1721,6 +1677,117 @@ namespace Facepunch.Voxels
 			{
 				var localPosition = ToLocalPosition( position );
 				entity.SceneObject.Attributes.Set( "VoxelLight", chunk.LightMap.GetLightAsVector( localPosition ) );
+			}
+		}
+
+		[Event.Tick.Client]
+		private void ClientTick()
+		{
+			while ( ChunkUpdateQueue.Count > 0 )
+			{
+				var update = ChunkUpdateQueue.Dequeue();
+
+				using ( var stream = new MemoryStream( update ) )
+				{
+					using ( var reader = new BinaryReader( stream ) )
+					{
+						var count = reader.ReadInt32();
+
+						for ( var i = 0; i < count; i++ )
+						{
+							var x = reader.ReadInt32();
+							var y = reader.ReadInt32();
+							var z = reader.ReadInt32();
+
+							var chunk = Current.GetOrCreateChunk( new IntVector3( x, y, z ) );
+							chunk.HasOnlyAirBlocks = reader.ReadBoolean();
+
+							if ( !chunk.HasOnlyAirBlocks )
+								chunk.Blocks = reader.ReadBytes( chunk.Blocks.Length );
+
+							chunk.LightMap.Deserialize( reader );
+							chunk.DeserializeBlockStates( reader );
+
+							_ = chunk.Initialize();
+						}
+					}
+				}
+			}
+
+			while ( BlockUpdateQueue.Count > 0 )
+			{
+				var update = BlockUpdateQueue.Dequeue();
+
+				using ( var stream = new MemoryStream( update ) )
+				{
+					using ( var reader = new BinaryReader( stream ) )
+					{
+						var count = reader.ReadInt32();
+
+						for ( var i = 0; i < count; i++ )
+						{
+							var x = reader.ReadInt32();
+							var y = reader.ReadInt32();
+							var z = reader.ReadInt32();
+							var blockId = reader.ReadByte();
+							var direction = reader.ReadInt32();
+							var position = new IntVector3( x, y, z );
+
+							BlockUpdateMap[position] = new BlockUpdate
+							{
+								BlockId = blockId,
+								Direction = direction
+							};
+						}
+					}
+				}
+			}
+
+			if ( BlockUpdateMap.Count > 0 )
+			{
+				var chunksToUpdate = new HashSet<Chunk>();
+
+				foreach ( var kv in BlockUpdateMap )
+				{
+					var position = kv.Key;
+					var update = kv.Value;
+
+					if ( Current.SetBlock( position, update.BlockId, update.Direction ) )
+					{
+						var chunk = Current.GetChunk( position );
+						chunksToUpdate.Add( chunk );
+
+						for ( int j = 0; j < 6; j++ )
+						{
+							var adjacentPosition = GetAdjacentPosition( position, j );
+							var adjacentChunk = Current.GetChunk( adjacentPosition );
+
+							if ( adjacentChunk.IsValid() )
+							{
+								chunksToUpdate.Add( adjacentChunk );
+							}
+						}
+					}
+				}
+
+				foreach ( var chunk in chunksToUpdate )
+				{
+					chunk.QueueFullUpdate();
+				}
+
+				BlockUpdateMap.Clear();
+			}
+
+			while ( StateUpdateQueue.Count > 0 )
+			{
+				var update = StateUpdateQueue.Dequeue();
+				var position = new IntVector3( update.x, update.y, update.z );
+				var chunk = Current.GetChunk( position );
+
+				if ( chunk.IsValid() )
+				{
+					chunk.DeserializeBlockStates( update.Data );
+				}
 			}
 		}
 
