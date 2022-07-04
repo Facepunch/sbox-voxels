@@ -115,7 +115,7 @@ namespace Facepunch.Voxels
 		private bool IsInitializing { get; set; }
 		private object Lock { get; set; } = new();
 
-		public bool IsValid => Body.IsValid();
+		public bool IsValid => Body.IsValid() && !IsDestroyed;
 
 		public Chunk()
 		{
@@ -826,6 +826,11 @@ namespace Facepunch.Voxels
 
 		public void Destroy()
 		{
+			if ( IsDestroyed )
+			{
+				throw new Exception( "Tried to destroy an already destroyed chunk!" );
+			}
+
 			if ( IsClient )
 			{
 				var viewer = Local.Client.GetChunkViewer();
@@ -842,7 +847,12 @@ namespace Facepunch.Voxels
 
 			foreach ( var layer in RenderLayers )
 			{
-				layer?.SceneObject.Delete();
+				if ( layer != null )
+				{
+					layer.SceneObject.Delete();
+					layer.Model = null;
+					layer.Mesh = null;
+				}
 			}
 
 			RenderLayers.Clear();
