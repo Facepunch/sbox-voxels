@@ -1823,7 +1823,7 @@ namespace Facepunch.Voxels
 				{
 					if ( !Game.Current.IsValid() ) break;
 
-					await GameTask.Delay( 1000 / 30 );
+					await GameTask.Delay( 1 );
 
 					while ( queue.Count > 0 )
 					{
@@ -1869,74 +1869,67 @@ namespace Facepunch.Voxels
 
 					if ( chunksToUpdate.Count == 0 )
 					{
-						await GameTask.Delay( 1000 / 30 );
+						await GameTask.Delay( 1 );
 						continue;
 					}
 
 					if ( IsClient && !Local.Pawn.IsValid() )
 					{
-						await GameTask.Delay( 1000 / 30 );
+						await GameTask.Delay( 1 );
 						continue;
 					}
 
-					var maxChunksPerSecond = 32;
+					var currentChunkIndex = chunksToUpdate.Count - 1;
+					var currentChunk = chunksToUpdate[currentChunkIndex];
 
-					for ( var j = 0; j < Math.Min( chunksToUpdate.Count, maxChunksPerSecond ); j++ )
+					if ( IsClient )
 					{
-						var currentChunkIndex = chunksToUpdate.Count - 1;
-						var currentChunk = chunksToUpdate[currentChunkIndex];
+						var currentDistance = float.PositiveInfinity;
+						var localPawnPosition = Local.Pawn.Position;
 
-						if ( IsClient )
+						for ( var i = 0; i < chunksToUpdate.Count; i++ )
 						{
-							var currentDistance = float.PositiveInfinity;
-							var localPawnPosition = Local.Pawn.Position;
+							var chunk = chunksToUpdate[i];
+							var distance = ToSourcePosition( chunk.Offset + chunk.Center ).Distance( localPawnPosition );
 
-							for ( var i = 0; i < chunksToUpdate.Count; i++ )
+							if ( distance < currentDistance )
 							{
-								var chunk = chunksToUpdate[i];
-								var distance = ToSourcePosition( chunk.Offset + chunk.Center ).Distance( localPawnPosition );
-
-								if ( distance < currentDistance )
-								{
-									currentChunk = chunk;
-									currentDistance = distance;
-									currentChunkIndex = i;
-								}
+								currentChunk = chunk;
+								currentDistance = distance;
+								currentChunkIndex = i;
 							}
 						}
-						else if ( IsServer )
-						{
-							var clients = Client.All;
+					}
+					else if ( IsServer )
+					{
+						var clients = Client.All;
 
-							foreach ( var client in clients )
+						foreach ( var client in clients )
+						{
+							if ( client.Pawn.IsValid() )
 							{
-								if ( client.Pawn.IsValid() )
+								var chunk = GetChunk( ToVoxelPosition( client.Pawn.Position ) );
+								var chunkIndex = chunksToUpdate.IndexOf( chunk );
+
+								if ( chunkIndex >= 0 )
 								{
-									var chunk = GetChunk( ToVoxelPosition( client.Pawn.Position ) );
-									var chunkIndex = chunksToUpdate.IndexOf( chunk );
-
-									if ( chunkIndex >= 0 )
-									{
-										currentChunk = chunksToUpdate[chunkIndex];
-										currentChunkIndex = chunkIndex;
-										break;
-									}
+									currentChunk = chunksToUpdate[chunkIndex];
+									currentChunkIndex = chunkIndex;
+									break;
 								}
-							}
-						}
-
-						chunksToUpdate.RemoveAt( currentChunkIndex );
-
-						if ( currentChunk.IsValid() )
-						{
-							if ( !currentChunk.HasDoneFirstFullUpdate )
-							{
-								currentChunk.StartFirstFullUpdateTask();
 							}
 						}
 					}
 
-					await GameTask.Delay( 1000 );
+					chunksToUpdate.RemoveAt( currentChunkIndex );
+
+					if ( currentChunk.IsValid() )
+					{
+						if ( !currentChunk.HasDoneFirstFullUpdate )
+						{
+							currentChunk.StartFirstFullUpdateTask();
+						}
+					}
 				}
 				catch ( TaskCanceledException )
 				{

@@ -121,7 +121,7 @@ namespace Facepunch.Voxels
 			var pawn = client.Pawn;
 			if ( !pawn.IsValid() ) return;
 
-			var position = pawn.Position;
+			var position = new Vector2( pawn.Position );
 			var currentWorld = VoxelWorld.Current;
 			var chunkBounds = currentWorld.ChunkSize.Length;
 
@@ -132,7 +132,7 @@ namespace Facepunch.Voxels
 				if ( chunk.IsValid() )
 				{
 					var chunkPositionCenter = chunk.Offset + chunk.Center;
-					var chunkPositionSource = currentWorld.ToSourcePosition( chunkPositionCenter );
+					var chunkPositionSource = new Vector2( currentWorld.ToSourcePosition( chunkPositionCenter ) );
 
 					if ( position.Distance( chunkPositionSource ) >= chunkBounds * currentWorld.VoxelSize * currentWorld.ChunkUnloadDistance )
 					{
@@ -158,7 +158,7 @@ namespace Facepunch.Voxels
 			{
 				var offset = ChunkSendQueue.Dequeue();
 				var chunkPositionCenter = offset + centerChunkPosition;
-				var chunkPositionSource = currentWorld.ToSourcePosition( chunkPositionCenter );
+				var chunkPositionSource = new Vector2( currentWorld.ToSourcePosition( chunkPositionCenter ) );
 
 				if ( position.Distance( chunkPositionSource ) <= chunkBounds * currentWorld.VoxelSize * currentWorld.ChunkRenderDistance )
 				{
