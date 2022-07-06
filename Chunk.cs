@@ -1,5 +1,4 @@
-﻿using Facepunch.CoreWars.Blocks;
-using Sandbox;
+﻿using Sandbox;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
