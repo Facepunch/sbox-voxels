@@ -172,7 +172,7 @@ namespace Facepunch.Voxels
 
 			if ( IsClient )
 			{
-				LightMap.UpdateTexture();
+				LightMap.UpdateTexture( true );
 			}
 
 			InitializeBlocks();
@@ -763,19 +763,23 @@ namespace Facepunch.Voxels
 
 		public void PropagateSunlight()
 		{
-			var z = SizeZ - 1;
-
-			for ( var x = 0; x < SizeX; x++ )
+			// We only want to propagate sunlight if we are the top sky block.
+			if ( Offset.z + SizeZ == World.MaxSize.z )
 			{
-				for ( var y = 0; y < SizeY; y++ )
-				{
-					var position = new IntVector3( x, y, z );
-					var blockId = GetLocalPositionBlock( position );
-					var block = World.GetBlockType( blockId );
+				var z = SizeZ - 1;
 
-					if ( block.IsTranslucent )
+				for ( var x = 0; x < SizeX; x++ )
+				{
+					for ( var y = 0; y < SizeY; y++ )
 					{
-						LightMap.AddSunLight( position, 15 );
+						var position = new IntVector3( x, y, z );
+						var blockId = GetLocalPositionBlock( position );
+						var block = World.GetBlockType( blockId );
+
+						if ( block.IsTranslucent )
+						{
+							LightMap.AddSunLight( position, 15 );
+						}
 					}
 				}
 			}

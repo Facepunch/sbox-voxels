@@ -232,7 +232,7 @@ namespace Facepunch.Voxels
 		}
 
 		public IBlockAtlasProvider BlockAtlas { get; private set; }
-		public IntVector3 MaxSize { get; private set; }
+		public IntVector3 MaxSize { get; private set; } = new IntVector3( 0, 0, 128 );
 		public string OpaqueMaterial { get; private set; }
 		public string TranslucentMaterial { get; private set; }
 		public bool ShouldServerUnloadChunks { get; private set; }
@@ -285,7 +285,7 @@ namespace Facepunch.Voxels
 		private BiomeSampler BiomeSampler;
 
 		public bool IsDestroyed { get; private set; }
-		public bool IsInfinite => MaxSize == 0;
+		public bool IsInfinite => MaxSize.x == 0 && MaxSize.y == 0;
 		public bool IsValid => !IsDestroyed;
 
 		private VoxelWorld() { }
@@ -321,7 +321,11 @@ namespace Facepunch.Voxels
 		{
 			if ( position.x >= 0 && position.y >= 0 && position.z >= 0 )
 			{
-				if ( IsInfinite ) return true;
+				if ( IsInfinite )
+				{
+					return position.z < MaxSize.z;
+				}
+
 				return position.x < MaxSize.x && position.y < MaxSize.y && position.z < MaxSize.z;
 			}
 
