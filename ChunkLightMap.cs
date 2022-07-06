@@ -79,6 +79,7 @@ namespace Facepunch.Voxels
 		{
 			var length = reader.ReadInt32();
 			PendingData = reader.ReadBytes( length );
+			IsDirty = true;
 		}
 
 		public int ToIndex( IntVector3 position, int component )

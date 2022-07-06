@@ -341,6 +341,9 @@ namespace Facepunch.Voxels
 		{
 			lock( Lock )
 			{
+				LightMap.UpdateTorchLight();
+				LightMap.UpdateSunLight();
+
 				UpdateVerticesResult = StartUpdateVerticesTask();
 
 				BuildCollision();
@@ -349,6 +352,7 @@ namespace Facepunch.Voxels
 				{
 					SetMeshVertices( UpdateVerticesResult.Vertices );
 					UpdateAdjacents( true );
+					LightMap.UpdateTexture();
 				}
 
 				HasDoneFirstFullUpdate = true;
@@ -1374,9 +1378,10 @@ namespace Facepunch.Voxels
 			if ( IsServer )
 			{
 				StartGeneratorTask();
-				PropagateSunlight();
-				PerformFullTorchUpdate();
 			}
+
+			PropagateSunlight();
+			PerformFullTorchUpdate();
 
 			LightMap.UpdateTorchLight();
 			LightMap.UpdateSunLight();
