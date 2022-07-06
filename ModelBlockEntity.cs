@@ -46,11 +46,6 @@ namespace Facepunch.Voxels
 			base.ClientSpawn();
 
 			BlockType = VoxelWorld.Current.GetBlockType( BlockId );
-
-			if ( Chunk.IsValid() )
-			{
-				Chunk.OnFullUpdate += UpdateAttributes;
-			}
 		}
 
 		public override void OnNewModel( Model model )
@@ -68,6 +63,11 @@ namespace Facepunch.Voxels
 			}
 
 			base.OnNewModel( model );
+		}
+
+		protected override void OnChunkReady()
+		{
+			Chunk.OnFullUpdate += UpdateAttributes;
 		}
 
 		protected override void OnDestroy()

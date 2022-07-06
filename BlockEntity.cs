@@ -85,7 +85,30 @@ namespace Facepunch.Voxels
 			LocalBlockPosition = World.ToLocalPosition( BlockPosition );
 			Chunk = World.GetChunk( BlockPosition );
 
+			if ( Chunk.IsValid() )
+			{
+				OnChunkReady();
+			}
+
 			base.ClientSpawn();
+		}
+
+		protected virtual void OnChunkReady()
+		{
+
+		}
+
+		[Event.Tick.Client]
+		protected virtual void ClientTick()
+		{
+			if ( Chunk.IsValid() ) return;
+
+			Chunk = World.GetChunk( BlockPosition );
+
+			if ( Chunk.IsValid() )
+			{
+				OnChunkReady();
+			}
 		}
 	}
 }
