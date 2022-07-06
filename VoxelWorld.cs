@@ -235,6 +235,7 @@ namespace Facepunch.Voxels
 		public IntVector3 MaxSize { get; private set; }
 		public string OpaqueMaterial { get; private set; }
 		public string TranslucentMaterial { get; private set; }
+		public bool ShouldServerUnloadChunks { get; private set; }
 		public int MinimumLoadedChunks { get; private set; }
 		public int ChunkRenderDistance { get; private set; }
 		public int ChunkUnloadDistance { get; private set; }
@@ -540,6 +541,11 @@ namespace Facepunch.Voxels
 		public void SetVoxelSize( int voxelSize )
 		{
 			VoxelSize = voxelSize;
+		}
+
+		public void SetServerUnloadsChunks( bool value )
+		{
+			ShouldServerUnloadChunks = value;
 		}
 
 		public void SetMinimumLoadedChunks( int minimum )
@@ -961,9 +967,6 @@ namespace Facepunch.Voxels
 		{
 			if ( BlockAtlas != null )
 				throw new Exception( "Unable to load a block atlas as one is already loaded for this world!" );
-
-			Log.Info( json );
-			Log.Info( provider );
 
 			var type = TypeLibrary.GetTypeByName( provider );
 
@@ -1906,7 +1909,7 @@ namespace Facepunch.Voxels
 
 						foreach ( var client in clients )
 						{
-							if ( client.Pawn.IsValid() )
+							if ( client.IsValid() && client.Pawn.IsValid() )
 							{
 								var chunk = GetChunk( ToVoxelPosition( client.Pawn.Position ) );
 								var chunkIndex = chunksToUpdate.IndexOf( chunk );

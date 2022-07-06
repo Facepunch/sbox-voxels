@@ -74,6 +74,7 @@ namespace Facepunch.Voxels
 		public HashSet<IntVector3> DirtyBlockStates { get; set; } = new();
 		public bool IsQueuedForFullUpdate { get; set; }
 		public bool HasDoneFirstFullUpdate { get; set; }
+		public HashSet<ChunkViewer> Viewers { get; set; } = new();
 		public ChunkGenerator Generator { get; set; }
 		public bool HasOnlyAirBlocks { get; set; }
 		public bool HasGenerated { get; private set; }
@@ -105,13 +106,12 @@ namespace Facepunch.Voxels
 		public PhysicsShape Shape;
 
 		private ConcurrentQueue<PhysicsShape> ShapesToDelete { get; set; } = new();
-		private ConcurrentQueue<BlockVertex[][]> VertexUpdateQueue { get; set; } = new();
 		private Dictionary<int, BlockEntity> Entities { get; set; }
 		private Dictionary<int, List<Entity>> Details { get; set; }
 		private bool IsFullUpdateEventPending { get; set; }
 		private List<QueuedTick> QueuedTicks { get; set; } = new();
 		private Queue<QueuedTick> TicksToRun { get; set; } = new();
-		private bool ShouldUpdateLightMap { get; set; }
+		private TimeSince TimeSinceInitialized { get; set; }
 		private bool IsInitializing { get; set; }
 		private object Lock { get; set; } = new();
 
@@ -178,6 +178,7 @@ namespace Facepunch.Voxels
 			InitializeBlocks();
 			Initialized = true;
 			IsInitializing = false;
+			TimeSinceInitialized = 0f;
 
 			if ( IsClient )
 			{
@@ -300,10 +301,11 @@ namespace Facepunch.Voxels
 
 				if ( IsClient )
 				{
-					VertexUpdateQueue.Enqueue( UpdateVerticesResult.Vertices );
+					SetMeshVertices( UpdateVerticesResult.Vertices );
+					UpdateAdjacents( true );
+					LightMap.UpdateTexture();
 				}
 
-				ShouldUpdateLightMap = true;
 				IsQueuedForFullUpdate = false;
 				IsFullUpdateEventPending = true;
 			}
@@ -345,7 +347,8 @@ namespace Facepunch.Voxels
 
 				if ( IsClient )
 				{
-					VertexUpdateQueue.Enqueue( UpdateVerticesResult.Vertices );
+					SetMeshVertices( UpdateVerticesResult.Vertices );
+					UpdateAdjacents( true );
 				}
 
 				HasDoneFirstFullUpdate = true;
@@ -840,6 +843,13 @@ namespace Facepunch.Voxels
 					viewer.RemoveLoadedChunk( Offset );
 				}
 			}
+			else
+			{
+				foreach ( var viewer in Viewers )
+				{
+					viewer.RemoveLoadedChunk( Offset );
+				}
+			}
 
 			OutgoingBlockUpdates.Clear();
 			BlockUpdatesToClear.Clear();
@@ -1066,9 +1076,6 @@ namespace Facepunch.Voxels
 			2, 2, 1, 1, 0, 0
 		};
 
-		[ConVar.Server]
-		public static int HueShiftTest { get; set; }
-
 		public ChunkVertexData StartUpdateVerticesTask()
 		{
 			lock ( Lock )
@@ -1199,7 +1206,7 @@ namespace Facepunch.Voxels
 				{
 					using ( var writer = new BinaryWriter( stream ) )
 					{
-						var updatesPerTick = OutgoingBlockUpdates.Take( 64 );
+						var updatesPerTick = OutgoingBlockUpdates.Take( 8192 );
 						writer.Write( updatesPerTick.Count() );
 
 						foreach ( var kv in updatesPerTick )
@@ -1233,7 +1240,7 @@ namespace Facepunch.Voxels
 				{
 					using ( var writer = new BinaryWriter( stream ) )
 					{
-						var updatesPerTick = DirtyBlockStates.Take( 64 );
+						var updatesPerTick = DirtyBlockStates.Take( 4096 );
 						writer.Write( updatesPerTick.Count() );
 
 						foreach ( var position in updatesPerTick )
@@ -1291,6 +1298,14 @@ namespace Facepunch.Voxels
 				var block = World.GetBlockType( queued.BlockId );
 				block.Tick( queued.Position );
 			}
+
+			if ( World.ShouldServerUnloadChunks )
+			{
+				if ( Initialized && TimeSinceInitialized > 10f && Viewers.Count == 0 )
+				{
+					World.RemoveChunk( this );
+				}
+			}
 		}
 
 		[Event.Tick.Client]
@@ -1313,18 +1328,6 @@ namespace Facepunch.Voxels
 			if ( viewer.IsValid() )
 			{
 				viewer.AddLoadedChunk( Offset );
-			}
-
-			if ( VertexUpdateQueue.TryDequeue( out var update ) )
-			{
-				SetMeshVertices( update );
-				UpdateAdjacents( true );
-			}
-
-			if ( ShouldUpdateLightMap )
-			{
-				ShouldUpdateLightMap = false;
-				LightMap.UpdateTexture();
 			}
 		}
 
