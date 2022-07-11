@@ -169,11 +169,6 @@ namespace Facepunch.Voxels
 				return;
 			}
 
-			if ( IsClient )
-			{
-				LightMap.UpdateTexture( true );
-			}
-
 			InitializeBlocks();
 			Initialized = true;
 			IsInitializing = false;
@@ -194,11 +189,6 @@ namespace Facepunch.Voxels
 			Event.Register( this );
 
 			World.AddToInitialUpdateList( this );
-
-			if ( IsClient )
-			{
-				QueueNeighbourFullUpdate();
-			}
 		}
 
 		public void QueueTick( IntVector3 position, BlockType block, float delay )
@@ -295,6 +285,7 @@ namespace Facepunch.Voxels
 
 				LightMap.UpdateTorchLight();
 				LightMap.UpdateSunLight();
+				LightMap.UpdateTexture();
 
 				UpdateVerticesResult = StartUpdateVerticesTask();
 
@@ -304,7 +295,6 @@ namespace Facepunch.Voxels
 				{
 					SetMeshVertices( UpdateVerticesResult.Vertices );
 					UpdateAdjacents( true );
-					LightMap.UpdateTexture();
 				}
 
 				IsQueuedForFullUpdate = false;
@@ -340,10 +330,11 @@ namespace Facepunch.Voxels
 
 		public void StartFirstFullUpdateTask()
 		{
-			lock( Lock )
+			lock ( Lock )
 			{
 				LightMap.UpdateTorchLight();
 				LightMap.UpdateSunLight();
+				LightMap.UpdateTexture();
 
 				UpdateVerticesResult = StartUpdateVerticesTask();
 
@@ -353,8 +344,9 @@ namespace Facepunch.Voxels
 				{
 					SetMeshVertices( UpdateVerticesResult.Vertices );
 					UpdateAdjacents( true );
-					LightMap.UpdateTexture();
 				}
+
+				QueueNeighbourFullUpdate();
 
 				HasDoneFirstFullUpdate = true;
 				IsFullUpdateEventPending = true;
@@ -533,7 +525,7 @@ namespace Facepunch.Voxels
 			{
 				BlockStates.Remove( position );
 				Log.Error( e.StackTrace );
-			} 
+			}
 		}
 
 		public void DeserializeBlockStates( BinaryReader reader )
@@ -1024,7 +1016,7 @@ namespace Facepunch.Voxels
 				if ( vertexCount > 0 )
 				{
 					layer.Mesh.SetVertexBufferSize( vertexCount );
-					layer.Mesh.SetVertexBufferData( new Span<BlockVertex>( vertices )  );
+					layer.Mesh.SetVertexBufferData( new Span<BlockVertex>( vertices ) );
 				}
 
 				layer.Mesh.SetVertexRange( 0, vertexCount );
@@ -1386,6 +1378,7 @@ namespace Facepunch.Voxels
 
 			LightMap.UpdateTorchLight();
 			LightMap.UpdateSunLight();
+			LightMap.UpdateTexture();
 		}
 	}
 }

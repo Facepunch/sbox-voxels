@@ -341,6 +341,10 @@ namespace Facepunch.Voxels
 			foreach ( var neighbour in affectedNeighbours )
 			{
 				neighbour.LightMap.UpdateSunLight();
+			}
+
+			foreach ( var neighbour in affectedNeighbours )
+			{
 				neighbour.QueueFullUpdate();
 			}
 		}
@@ -418,6 +422,10 @@ namespace Facepunch.Voxels
 			foreach ( var neighbour in affectedNeighbours )
 			{
 				neighbour.LightMap.UpdateTorchLight( channel );
+			}
+
+			foreach ( var neighbour in affectedNeighbours )
+			{
 				neighbour.QueueFullUpdate();
 			}
 		}
