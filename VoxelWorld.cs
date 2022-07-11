@@ -1712,7 +1712,6 @@ namespace Facepunch.Voxels
 							if ( !chunk.HasOnlyAirBlocks )
 								chunk.Blocks = reader.ReadBytes( chunk.Blocks.Length );
 
-							chunk.LightMap.Deserialize( reader );
 							chunk.DeserializeBlockStates( reader );
 
 							_ = chunk.Initialize();

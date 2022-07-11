@@ -221,7 +221,6 @@ namespace Facepunch.Voxels
 								if ( !chunk.HasOnlyAirBlocks )
 									writer.Write( chunk.Blocks );
 
-								chunk.LightMap.Serialize( writer );
 								chunk.SerializeBlockStates( writer );
 
 								LoadedChunks.Add( chunk.Offset );

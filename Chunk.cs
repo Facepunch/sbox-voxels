@@ -291,6 +291,8 @@ namespace Facepunch.Voxels
 		{
 			lock ( Lock )
 			{
+				PropagateSunlight();
+
 				LightMap.UpdateTorchLight();
 				LightMap.UpdateSunLight();
 
