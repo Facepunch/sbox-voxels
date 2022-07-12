@@ -72,6 +72,7 @@ namespace Facepunch.Voxels
 		public ChunkVertexData UpdateVerticesResult { get; set; }
 		public HashSet<IntVector3> DirtyBlockStates { get; set; } = new();
 		public bool IsQueuedForFullUpdate { get; set; }
+		public bool IsQueuedForNextUpdate { get; set; }
 		public bool HasDoneFirstFullUpdate { get; set; }
 		public HashSet<ChunkViewer> Viewers { get; set; } = new();
 		public ChunkGenerator Generator { get; set; }
@@ -273,6 +274,13 @@ namespace Facepunch.Voxels
 		public void QueueFullUpdate()
 		{
 			if ( !HasDoneFirstFullUpdate ) return;
+
+			if ( IsQueuedForFullUpdate )
+			{
+				IsQueuedForNextUpdate = true;
+				return;
+			}
+
 			World.AddToFullUpdateList( this );
 			IsQueuedForFullUpdate = true;
 		}
@@ -283,6 +291,8 @@ namespace Facepunch.Voxels
 			{
 				if ( World.UseVoxelLighting )
 				{
+					PropagateSunlight();
+
 					LightMap.UpdateTorchLight();
 					LightMap.UpdateSunLight();
 					LightMap.UpdateTexture();
@@ -300,6 +310,12 @@ namespace Facepunch.Voxels
 
 				IsQueuedForFullUpdate = false;
 				IsFullUpdateEventPending = true;
+
+				if ( IsQueuedForNextUpdate )
+				{
+					IsQueuedForNextUpdate = false;
+					QueueFullUpdate();
+				}
 			}
 		}
 

@@ -177,6 +177,7 @@ namespace Facepunch.Voxels
 			IsDirty = true;
 			PendingData[index] = (byte)((PendingData[index] & 0x0F) | ((value & 0xf) << 4));
 			PendingData[ToIndex( position, 3 )] |= 0x40;
+			Chunk.QueueFullUpdate();
 			return true;
 		}
 
@@ -262,8 +263,6 @@ namespace Facepunch.Voxels
 
 		public void UpdateSunLight()
 		{
-			var affectedNeighbours = new HashSet<Chunk>();
-
 			while ( SunLightRemoveQueue.Count > 0 )
 			{
 				if ( !SunLightRemoveQueue.TryDequeue( out var node ) )
@@ -278,8 +277,6 @@ namespace Facepunch.Voxels
 					{
 						VoxelWorld.SetSunLight( neighbourPosition, 0 );
 
-						AddAffectedNeighbour( affectedNeighbours, neighbourPosition );
-
 						SunLightRemoveQueue.Enqueue( new LightRemoveNode
 						{
 							Position = neighbourPosition,
@@ -288,7 +285,6 @@ namespace Facepunch.Voxels
 					}
 					else if ( lightLevel >= node.Value )
 					{
-						AddAffectedNeighbour( affectedNeighbours, neighbourPosition );
 						SunLightAddQueue.Enqueue( neighbourPosition );
 					}
 				}
@@ -322,7 +318,6 @@ namespace Facepunch.Voxels
 							if ( lightLevel == 15 && neighbourPosition.z == node.z - 1 && !neighbourBlock.AttenuatesSunLight )
 							{
 								VoxelWorld.AddSunLight( neighbourPosition, lightLevel );
-								AddAffectedNeighbour( affectedNeighbours, neighbourPosition );
 							}
 							else if ( lightLevel == 15 && neighbourPosition.z == node.z + 1 )
 							{
@@ -331,21 +326,10 @@ namespace Facepunch.Voxels
 							else
 							{
 								VoxelWorld.AddSunLight( neighbourPosition, (byte)(lightLevel - 1) );
-								AddAffectedNeighbour( affectedNeighbours, neighbourPosition );
 							}
 						}
 					}
 				}
-			}
-
-			foreach ( var neighbour in affectedNeighbours )
-			{
-				neighbour.LightMap.UpdateSunLight();
-			}
-
-			foreach ( var neighbour in affectedNeighbours )
-			{
-				neighbour.QueueFullUpdate();
 			}
 		}
 
