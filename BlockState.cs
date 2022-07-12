@@ -22,7 +22,7 @@ namespace Facepunch.Voxels
 			{
 				if ( InternalHealth != value )
 				{
-					Chunk.LightMap.SetBlockDamage( LocalPosition, (byte)(100 - value) );
+					Chunk.DataMap.SetBlockDamage( LocalPosition, (byte)(100 - value) );
 					InternalHealth = value;
 				}
 			}
@@ -62,13 +62,13 @@ namespace Facepunch.Voxels
 
 		public virtual void OnCreated()
 		{
-			Chunk.LightMap.SetBlockDamage( LocalPosition, 0 );
+			Chunk.DataMap.SetBlockDamage( LocalPosition, 0 );
 			Health = 100;
 		}
 
 		public virtual void OnRemoved()
 		{
-			Chunk.LightMap.SetBlockDamage( LocalPosition, 0 );
+			Chunk.DataMap.SetBlockDamage( LocalPosition, 0 );
 		}
 
 		public virtual void Serialize( BinaryWriter writer )

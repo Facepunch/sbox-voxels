@@ -33,7 +33,7 @@ namespace Facepunch.Voxels
 
 			SceneObject = new SceneObject( Map.Scene, Model, transform );
 			SceneObject.Attributes.Set( "VoxelSize", Chunk.VoxelSize );
-			SceneObject.Attributes.Set( "LightMap", Chunk.LightMap.Texture );
+			SceneObject.Attributes.Set( "DataMap", Chunk.DataMap.Texture );
 		}
 
 		public void SetBrightness( float brightness )
@@ -72,6 +72,7 @@ namespace Facepunch.Voxels
 		public ChunkVertexData UpdateVerticesResult { get; set; }
 		public HashSet<IntVector3> DirtyBlockStates { get; set; } = new();
 		public bool IsQueuedForFullUpdate { get; set; }
+		public bool IsQueuedForNextUpdate { get; set; }
 		public bool HasDoneFirstFullUpdate { get; set; }
 		public HashSet<ChunkViewer> Viewers { get; set; } = new();
 		public ChunkGenerator Generator { get; set; }
@@ -91,7 +92,7 @@ namespace Facepunch.Voxels
 		public ChunkRenderLayer AlphaTestLayer;
 		public ChunkRenderLayer OpaqueLayer;
 		public List<ChunkRenderLayer> RenderLayers;
-		public ChunkLightMap LightMap { get; set; }
+		public ChunkDataMap DataMap { get; set; }
 		public int VoxelSize;
 		public int SizeX;
 		public int SizeY;
@@ -135,7 +136,7 @@ namespace Facepunch.Voxels
 			Blocks = new byte[SizeX * SizeY * SizeZ];
 			Entities = new();
 			Details = new();
-			LightMap = new ChunkLightMap( this, world );
+			DataMap = new ChunkDataMap( this, world );
 			Offset = new IntVector3( x, y, z );
 			Body = Map.Physics.Body;
 			World = world;
@@ -273,6 +274,13 @@ namespace Facepunch.Voxels
 		public void QueueFullUpdate()
 		{
 			if ( !HasDoneFirstFullUpdate ) return;
+
+			if ( IsQueuedForFullUpdate )
+			{
+				IsQueuedForNextUpdate = true;
+				return;
+			}
+
 			World.AddToFullUpdateList( this );
 			IsQueuedForFullUpdate = true;
 		}
@@ -281,12 +289,7 @@ namespace Facepunch.Voxels
 		{
 			lock ( Lock )
 			{
-				if ( World.UseVoxelLighting )
-				{
-					LightMap.UpdateTorchLight();
-					LightMap.UpdateSunLight();
-					LightMap.UpdateTexture();
-				}
+				DataMap.UpdateTexture();
 
 				UpdateVerticesResult = StartUpdateVerticesTask();
 
@@ -295,11 +298,16 @@ namespace Facepunch.Voxels
 				if ( IsClient )
 				{
 					SetMeshVertices( UpdateVerticesResult.Vertices );
-					UpdateAdjacents( true );
 				}
 
 				IsQueuedForFullUpdate = false;
 				IsFullUpdateEventPending = true;
+
+				if ( IsQueuedForNextUpdate )
+				{
+					IsQueuedForNextUpdate = false;
+					QueueFullUpdate();
+				}
 			}
 		}
 
@@ -333,12 +341,7 @@ namespace Facepunch.Voxels
 		{
 			lock ( Lock )
 			{
-				if ( World.UseVoxelLighting )
-				{
-					LightMap.UpdateTorchLight();
-					LightMap.UpdateSunLight();
-					LightMap.UpdateTexture();
-				}
+				DataMap.UpdateTexture();
 
 				UpdateVerticesResult = StartUpdateVerticesTask();
 
@@ -347,7 +350,6 @@ namespace Facepunch.Voxels
 				if ( IsClient )
 				{
 					SetMeshVertices( UpdateVerticesResult.Vertices );
-					UpdateAdjacents( true );
 				}
 
 				QueueNeighbourFullUpdate();
@@ -355,39 +357,6 @@ namespace Facepunch.Voxels
 				HasDoneFirstFullUpdate = true;
 				IsFullUpdateEventPending = true;
 			}
-		}
-
-		public void PerformFullTorchUpdate()
-		{
-			for ( var x = 0; x < SizeX; x++ )
-			{
-				for ( var y = 0; y < SizeY; y++ )
-				{
-					for ( var z = 0; z < SizeZ; z++ )
-					{
-						var position = new IntVector3( x, y, z );
-						var blockIndex = GetLocalPositionIndex( position );
-						var block = World.GetBlockType( Blocks[blockIndex] );
-
-						if ( block.LightLevel.Length > 0 )
-						{
-							LightMap.AddRedTorchLight( position, (byte)block.LightLevel.x );
-							LightMap.AddGreenTorchLight( position, (byte)block.LightLevel.y );
-							LightMap.AddBlueTorchLight( position, (byte)block.LightLevel.z );
-						}
-					}
-				}
-			}
-		}
-
-		public void UpdateAdjacents( bool recurseNeighbours = false )
-		{
-			UpdateNeighbourLightMap( "LightMapWest", BlockFace.West, recurseNeighbours );
-			UpdateNeighbourLightMap( "LightMapEast", BlockFace.East, recurseNeighbours );
-			UpdateNeighbourLightMap( "LightMapNorth", BlockFace.North, recurseNeighbours );
-			UpdateNeighbourLightMap( "LightMapSouth", BlockFace.South, recurseNeighbours );
-			UpdateNeighbourLightMap( "LightMapTop", BlockFace.Top, recurseNeighbours );
-			UpdateNeighbourLightMap( "LightMapBottom", BlockFace.Bottom, recurseNeighbours );
 		}
 
 		public IEnumerable<IntVector3> GetNeighbourOffsets()
@@ -755,54 +724,10 @@ namespace Facepunch.Voxels
 							entity.BlockType = block;
 							SetEntity( localPosition, entity );
 						}
-
-						LightMap?.SetOpaque( localPosition, !block.IsTranslucent );
 					}
 				}
 			}
 		}
-
-		public void PropagateSunlight()
-		{
-			// We only want to propagate sunlight if we are the top sky block.
-			if ( Offset.z + SizeZ == World.MaxSize.z )
-			{
-				var z = SizeZ - 1;
-
-				for ( var x = 0; x < SizeX; x++ )
-				{
-					for ( var y = 0; y < SizeY; y++ )
-					{
-						var position = new IntVector3( x, y, z );
-						var blockId = GetLocalPositionBlock( position );
-						var block = World.GetBlockType( blockId );
-
-						if ( block.IsTranslucent )
-						{
-							LightMap.AddSunLight( position, 15 );
-						}
-					}
-				}
-			}
-
-			var chunkAbove = GetNeighbour( BlockFace.Top );
-			if ( !chunkAbove.IsValid() ) return;
-			if ( !chunkAbove.Initialized ) return;
-
-			for ( var x = 0; x < SizeX; x++ )
-			{
-				for ( var y = 0; y < SizeY; y++ )
-				{
-					var lightLevel = World.GetSunLight( chunkAbove.Offset + new IntVector3( x, y, 0 ) );
-
-					if ( lightLevel > 0 )
-					{
-						LightMap.AddSunLight( new IntVector3( x, y, SizeZ - 1 ), lightLevel );
-					}
-				}
-			}
-		}
-
 		public int GetSizeInDirection( BlockFace direction )
 		{
 			if ( direction == BlockFace.Top || direction == BlockFace.Bottom )
@@ -827,9 +752,6 @@ namespace Facepunch.Voxels
 
 			if ( blockId != 0 && HasOnlyAirBlocks )
 				HasOnlyAirBlocks = false;
-
-			var block = World.GetBlockType( blockId );
-			LightMap?.SetOpaque( position, !block.IsTranslucent );
 		}
 
 		public void Destroy()
@@ -872,7 +794,7 @@ namespace Facepunch.Voxels
 
 			RenderLayers.Clear();
 
-			LightMap.Destroy();
+			DataMap.Destroy();
 
 			foreach ( var kv in Entities )
 			{
@@ -1024,23 +946,6 @@ namespace Facepunch.Voxels
 				}
 
 				layer.Mesh.SetVertexRange( 0, vertexCount );
-			}
-		}
-
-		private void UpdateNeighbourLightMap( string name, BlockFace direction, bool recurseNeighbours = false )
-		{
-			var neighbour = World.GetChunk( GetAdjacentChunkOffset( direction ) );
-
-			if ( neighbour.IsValid() )
-			{
-				for ( int i = 0; i < RenderLayers.Count; i++ )
-				{
-					var layer = RenderLayers[i];
-					layer.SceneObject?.Attributes.Set( name, neighbour.LightMap.Texture );
-				}
-
-				if ( recurseNeighbours )
-					neighbour.UpdateAdjacents();
 			}
 		}
 
@@ -1375,16 +1280,6 @@ namespace Facepunch.Voxels
 			if ( IsServer )
 			{
 				StartGeneratorTask();
-			}
-
-			if ( World.UseVoxelLighting )
-			{
-				PropagateSunlight();
-				PerformFullTorchUpdate();
-
-				LightMap.UpdateTorchLight();
-				LightMap.UpdateSunLight();
-				LightMap.UpdateTexture();
 			}
 		}
 	}
