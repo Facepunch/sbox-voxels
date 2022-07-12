@@ -281,11 +281,12 @@ namespace Facepunch.Voxels
 		{
 			lock ( Lock )
 			{
-				PropagateSunlight();
-
-				LightMap.UpdateTorchLight();
-				LightMap.UpdateSunLight();
-				LightMap.UpdateTexture();
+				if ( World.UseVoxelLighting )
+				{
+					LightMap.UpdateTorchLight();
+					LightMap.UpdateSunLight();
+					LightMap.UpdateTexture();
+				}
 
 				UpdateVerticesResult = StartUpdateVerticesTask();
 
@@ -332,9 +333,12 @@ namespace Facepunch.Voxels
 		{
 			lock ( Lock )
 			{
-				LightMap.UpdateTorchLight();
-				LightMap.UpdateSunLight();
-				LightMap.UpdateTexture();
+				if ( World.UseVoxelLighting )
+				{
+					LightMap.UpdateTorchLight();
+					LightMap.UpdateSunLight();
+					LightMap.UpdateTexture();
+				}
 
 				UpdateVerticesResult = StartUpdateVerticesTask();
 
@@ -1373,12 +1377,15 @@ namespace Facepunch.Voxels
 				StartGeneratorTask();
 			}
 
-			PropagateSunlight();
-			PerformFullTorchUpdate();
+			if ( World.UseVoxelLighting )
+			{
+				PropagateSunlight();
+				PerformFullTorchUpdate();
 
-			LightMap.UpdateTorchLight();
-			LightMap.UpdateSunLight();
-			LightMap.UpdateTexture();
+				LightMap.UpdateTorchLight();
+				LightMap.UpdateSunLight();
+				LightMap.UpdateTexture();
+			}
 		}
 	}
 }

@@ -73,6 +73,7 @@ namespace Facepunch.Voxels
 					var minimumLoadedChunks = reader.ReadInt32();
 					var opaqueMaterial = reader.ReadString();
 					var translucentMaterial = reader.ReadString();
+					var useVoxelLighting = reader.ReadBoolean();
 
 					Current = new VoxelWorld( seed )
 					{
@@ -83,6 +84,7 @@ namespace Facepunch.Voxels
 						ChunkRenderDistance = chunkRenderDistance,
 						ChunkUnloadDistance = chunkUnloadDistance,
 						MinimumLoadedChunks = minimumLoadedChunks,
+						UseVoxelLighting = useVoxelLighting,
 						OpaqueMaterial = opaqueMaterial,
 						TranslucentMaterial = translucentMaterial
 					};
@@ -240,6 +242,7 @@ namespace Facepunch.Voxels
 		public int ChunkRenderDistance { get; private set; }
 		public int ChunkUnloadDistance { get; private set; }
 		public bool IsLoadingFromFile { get; private set; }
+		public bool UseVoxelLighting { get; private set; }
 		public IntVector3 ChunkSize = new IntVector3( 32, 32, 32 );
 		public int VoxelSize = 48;
 		public bool Initialized { get; private set; }
@@ -483,6 +486,7 @@ namespace Facepunch.Voxels
 					writer.Write( MinimumLoadedChunks );
 					writer.Write( OpaqueMaterial );
 					writer.Write( TranslucentMaterial );
+					writer.Write( UseVoxelLighting );
 					writer.Write( BlockAtlas.Json );
 					writer.Write( BlockAtlasType );
 					writer.Write( BlockData.Count - 1 );
@@ -555,6 +559,11 @@ namespace Facepunch.Voxels
 		public void SetMinimumLoadedChunks( int minimum )
 		{
 			MinimumLoadedChunks = minimum;
+		}
+
+		public void EnableVoxelLighting()
+		{
+			UseVoxelLighting = true;
 		}
 
 		public async Task<bool> LoadFromBytes( byte[] bytes )
