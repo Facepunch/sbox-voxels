@@ -73,7 +73,6 @@ namespace Facepunch.Voxels
 					var minimumLoadedChunks = reader.ReadInt32();
 					var opaqueMaterial = reader.ReadString();
 					var translucentMaterial = reader.ReadString();
-					var useVoxelLighting = reader.ReadBoolean();
 
 					Current = new VoxelWorld( seed )
 					{
@@ -84,7 +83,6 @@ namespace Facepunch.Voxels
 						ChunkRenderDistance = chunkRenderDistance,
 						ChunkUnloadDistance = chunkUnloadDistance,
 						MinimumLoadedChunks = minimumLoadedChunks,
-						UseVoxelLighting = useVoxelLighting,
 						OpaqueMaterial = opaqueMaterial,
 						TranslucentMaterial = translucentMaterial
 					};
@@ -242,7 +240,6 @@ namespace Facepunch.Voxels
 		public int ChunkRenderDistance { get; private set; }
 		public int ChunkUnloadDistance { get; private set; }
 		public bool IsLoadingFromFile { get; private set; }
-		public bool UseVoxelLighting { get; private set; }
 		public IntVector3 ChunkSize = new IntVector3( 32, 32, 32 );
 		public int VoxelSize = 48;
 		public bool Initialized { get; private set; }
@@ -486,7 +483,6 @@ namespace Facepunch.Voxels
 					writer.Write( MinimumLoadedChunks );
 					writer.Write( OpaqueMaterial );
 					writer.Write( TranslucentMaterial );
-					writer.Write( UseVoxelLighting );
 					writer.Write( BlockAtlas.Json );
 					writer.Write( BlockAtlasType );
 					writer.Write( BlockData.Count - 1 );
@@ -559,11 +555,6 @@ namespace Facepunch.Voxels
 		public void SetMinimumLoadedChunks( int minimum )
 		{
 			MinimumLoadedChunks = minimum;
-		}
-
-		public void EnableVoxelLighting()
-		{
-			UseVoxelLighting = true;
 		}
 
 		public async Task<bool> LoadFromBytes( byte[] bytes )
@@ -1132,186 +1123,6 @@ namespace Facepunch.Voxels
 			return chunk.GetState<T>( localPosition );
 		}
 
-		public byte GetSunLight( IntVector3 position )
-		{
-			var chunk = GetChunk( position );
-			if ( !chunk.IsValid() ) return 0;
-
-			var localPosition = ToLocalPosition( position );
-			return chunk.LightMap.GetSunLight( localPosition );
-		}
-
-		public bool SetSunLight( IntVector3 position, byte value )
-		{
-			var chunk = GetChunk( position );
-			if ( !chunk.IsValid() ) return false;
-
-			var localPosition = ToLocalPosition( position );
-			return chunk.LightMap.SetSunLight( localPosition, value );
-		}
-
-		public byte GetTorchLight( IntVector3 position, int channel )
-		{
-			var chunk = GetChunk( position );
-			if ( !chunk.IsValid() ) return 0;
-
-			var localPosition = ToLocalPosition( position );
-			return chunk.LightMap.GetTorchLight( localPosition, channel );
-		}
-
-		public bool SetTorchLight( IntVector3 position, int channel, byte value )
-		{
-			var chunk = GetChunk( position );
-			if ( !chunk.IsValid() ) return false;
-
-			var localPosition = ToLocalPosition( position );
-			return chunk.LightMap.SetTorchLight( localPosition, channel, value );
-		}
-
-		public byte GetRedTorchLight( IntVector3 position )
-		{
-			var chunk = GetChunk( position );
-			if ( !chunk.IsValid() ) return 0;
-
-			var localPosition = ToLocalPosition( position );
-			return chunk.LightMap.GetRedTorchLight( localPosition );
-		}
-
-		public bool SetRedTorchLight( IntVector3 position, byte value )
-		{
-			var chunk = GetChunk( position );
-			if ( !chunk.IsValid() ) return false;
-
-			var localPosition = ToLocalPosition( position );
-			return chunk.LightMap.SetRedTorchLight( localPosition, value );
-		}
-
-		public byte GetGreenTorchLight( IntVector3 position )
-		{
-			var chunk = GetChunk( position );
-			if ( !chunk.IsValid() ) return 0;
-
-			var localPosition = ToLocalPosition( position );
-			return chunk.LightMap.GetGreenTorchLight( localPosition );
-		}
-
-		public bool SetGreenTorchLight( IntVector3 position, byte value )
-		{
-			var chunk = GetChunk( position );
-			if ( !chunk.IsValid() ) return false;
-
-			var localPosition = ToLocalPosition( position );
-			return chunk.LightMap.SetGreenTorchLight( localPosition, value );
-		}
-
-		public byte GetBlueTorchLight( IntVector3 position )
-		{
-			var chunk = GetChunk( position );
-			if ( !chunk.IsValid() ) return 0;
-
-			var localPosition = ToLocalPosition( position );
-			return chunk.LightMap.GetGreenTorchLight( localPosition );
-		}
-
-		public bool SetBlueTorchLight( IntVector3 position, byte value )
-		{
-			var chunk = GetChunk( position );
-			if ( !chunk.IsValid() ) return false;
-
-			var localPosition = ToLocalPosition( position );
-			return chunk.LightMap.SetGreenTorchLight( localPosition, value );
-		}
-
-		public void RemoveSunLight( IntVector3 position )
-		{
-			var chunk = GetChunk( position );
-			if ( !chunk.IsValid() ) return;
-
-			var localPosition = ToLocalPosition( position );
-			chunk.LightMap.RemoveSunLight( localPosition );
-		}
-
-		public void RemoveTorchLight( IntVector3 position, int channel )
-		{
-			var chunk = GetChunk( position );
-			if ( !chunk.IsValid() ) return;
-
-			var localPosition = ToLocalPosition( position );
-			chunk.LightMap.RemoveTorchLight( localPosition, channel );
-		}
-
-		public void RemoveRedTorchLight( IntVector3 position )
-		{
-			var chunk = GetChunk( position );
-			if ( !chunk.IsValid() ) return;
-
-			var localPosition = ToLocalPosition( position );
-			chunk.LightMap.RemoveRedTorchLight( localPosition );
-		}
-
-		public void RemoveGreenTorchLight( IntVector3 position )
-		{
-			var chunk = GetChunk( position );
-			if ( !chunk.IsValid() ) return;
-
-			var localPosition = ToLocalPosition( position );
-			chunk.LightMap.RemoveGreenTorchLight( localPosition );
-		}
-
-		public void RemoveBlueTorchLight( IntVector3 position )
-		{
-			var chunk = GetChunk( position );
-			if ( !chunk.IsValid() ) return;
-
-			var localPosition = ToLocalPosition( position );
-			chunk.LightMap.RemoveBlueTorchLight( localPosition );
-		}
-
-		public void AddSunLight( IntVector3 position, byte value )
-		{
-			var chunk = GetChunk( position );
-			if ( !chunk.IsValid() ) return;
-
-			var localPosition = ToLocalPosition( position );
-			chunk.LightMap.AddSunLight( localPosition, value );
-		}
-
-		public void AddTorchLight( IntVector3 position, int channel, byte value )
-		{
-			var chunk = GetChunk( position );
-			if ( !chunk.IsValid() ) return;
-
-			var localPosition = ToLocalPosition( position );
-			chunk.LightMap.AddTorchLight( localPosition, channel, value );
-		}
-
-		public void AddRedTorchLight( IntVector3 position, byte value )
-		{
-			var chunk = GetChunk( position );
-			if ( !chunk.IsValid() ) return;
-
-			var localPosition = ToLocalPosition( position );
-			chunk.LightMap.AddRedTorchLight( localPosition, value );
-		}
-
-		public void AddGreenTorchLight( IntVector3 position, byte value )
-		{
-			var chunk = GetChunk( position );
-			if ( !chunk.IsValid() ) return;
-
-			var localPosition = ToLocalPosition( position );
-			chunk.LightMap.AddGreenTorchLight( localPosition, value );
-		}
-
-		public void AddBlueTorchLight( IntVector3 position, byte value )
-		{
-			var chunk = GetChunk( position );
-			if ( !chunk.IsValid() ) return;
-
-			var localPosition = ToLocalPosition( position );
-			chunk.LightMap.AddBlueTorchLight( localPosition, value );
-		}
-
 		public void Destroy()
 		{
 			Event.Unregister( this );
@@ -1405,31 +1216,6 @@ namespace Facepunch.Voxels
 
 			var currentBlock = GetBlockType( currentBlockId );
 			var block = GetBlockType( blockId );
-
-			if ( block.LightLevel.Length > 0 )
-			{
-				if ( block.LightLevel.x > 0 )
-					AddRedTorchLight( position, (byte)block.LightLevel.x );
-				else
-					RemoveRedTorchLight( position );
-
-				if ( block.LightLevel.y > 0 )
-					AddGreenTorchLight( position, (byte)block.LightLevel.y );
-				else
-					RemoveGreenTorchLight( position );
-
-				if ( block.LightLevel.z > 0 )
-					AddBlueTorchLight( position, (byte)block.LightLevel.z );
-				else
-					RemoveBlueTorchLight( position );
-			}
-			else
-			{
-				RemoveBlueTorchLight( position );
-				RemoveRedTorchLight( position );
-				RemoveGreenTorchLight( position );
-				RemoveSunLight( position );
-			}
 
 			currentBlock.OnBlockRemoved( chunk, position );
 
@@ -1691,8 +1477,7 @@ namespace Facepunch.Voxels
 
 			if ( entity.SceneObject.IsValid() )
 			{
-				var localPosition = ToLocalPosition( position );
-				entity.SceneObject.Attributes.Set( "VoxelLight", chunk.LightMap.GetLightAsVector( localPosition ) );
+				
 			}
 		}
 

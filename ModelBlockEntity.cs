@@ -84,7 +84,6 @@ namespace Facepunch.Voxels
 		{
 			if ( SceneObject.IsValid() && Chunk.IsValid() )
 			{
-				SceneObject.Attributes.Set( "VoxelLight", Chunk.LightMap.GetLightAsVector( LocalBlockPosition ) );
 				SceneObject.Attributes.Set( "TintColor", BlockType.TintColor );
 
 				var chunkIndex = Chunk.Offset.x * Chunk.SizeY * Chunk.SizeZ + Chunk.Offset.y * Chunk.SizeZ + Chunk.Offset.z;

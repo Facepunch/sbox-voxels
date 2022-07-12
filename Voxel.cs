@@ -15,10 +15,5 @@
 		public BlockState GetData<T>() where T : BlockState => Chunk.GetState<T>( LocalPosition );
 		public BlockState GetOrCreateData<T>() where T : BlockState => Chunk.GetOrCreateState<T>( LocalPosition );
 		public BlockType GetBlockType() => VoxelWorld.Current.GetBlockType( BlockId );
-
-		public byte GetSunLight() => Chunk.LightMap.GetSunLight( LocalPosition );
-		public byte GetRedTorchLight() => Chunk.LightMap.GetRedTorchLight( LocalPosition );
-		public byte GetGreenTorchLight() => Chunk.LightMap.GetGreenTorchLight( LocalPosition );
-		public byte GetBlueTorchLight() => Chunk.LightMap.GetBlueTorchLight( LocalPosition );
 	}
 }

@@ -18,8 +18,6 @@ namespace Facepunch.Voxels
 		public override string[] DetailModels => Resource.DetailModels;
 		public override float DetailSpawnChance => Resource.DetailSpawnChance;
 		public override float DetailScale => Resource.DetailScale;
-		public override IntVector3 LightLevel => Resource.LightLevel;
-		public override Vector3 LightFilter => Resource.LightFilter;
 		public override string FootLeftSound => Resource.Sounds.FootLeft;
 		public override string FootRightSound => Resource.Sounds.FootRight;
 		public override string FootLaunchSound => Resource.Sounds.FootLaunch;

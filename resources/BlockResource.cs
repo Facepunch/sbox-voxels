@@ -79,18 +79,10 @@ namespace Facepunch.Voxels
 		[HideInEditor]
 		public Dictionary<BlockFace,string> FaceToTexture { get; set; }
 
-		[HideInEditor]
-		public IntVector3 LightLevel { get; protected set; }
-
-		[HideInEditor]
-		public Vector3 LightFilter { get; protected set; }
-
 		protected override void PostLoad()
 		{
 			base.PostLoad();
 
-			LightLevel = new IntVector3( RedLight, GreenLight, BlueLight );
-			LightFilter = new Vector3( RedFilter, GreenFilter, BlueFilter );
 			FaceToTexture = new();
 
 			AddFaceTexture( BlockFace.Top, Textures.Top );

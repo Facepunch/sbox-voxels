@@ -63,8 +63,6 @@ namespace Facepunch.Voxels
 
 			Rand.SetSeed( offset.x + offset.y + offset.z * Chunk.SizeZ + VoxelWorld.Seed );
 
-			var topChunk = Chunk.GetNeighbour( BlockFace.Top );
-
 			for ( var x = 0; x < Chunk.SizeX; x++ )
 			{
 				for ( var y = 0; y < Chunk.SizeY; y++ )
@@ -81,8 +79,6 @@ namespace Facepunch.Voxels
 						{
 							if ( z + offset.z < VoxelWorld.SeaLevel )
 								Chunk.CreateBlockAtPosition( position, biome.LiquidBlockId );
-							else if ( Chunk.Blocks[index] == 0 && z == Chunk.SizeZ - 1 )
-								Chunk.LightMap.AddSunLight( position, 15 );
 						}
 						else
 						{
@@ -111,14 +107,6 @@ namespace Facepunch.Voxels
 									VoxelWorld.SpawnpointsQueue.Enqueue( spawnPositionSource );
 								}
 							}
-						}
-
-						if ( topChunk.IsValid() )
-						{
-							var sunlightLevel = topChunk.LightMap.GetSunLight( new IntVector3( x, y, 0 ) );
-
-							if ( sunlightLevel > 0 )
-								Chunk.LightMap.AddSunLight( new IntVector3( x, y, Chunk.SizeZ - 1 ), sunlightLevel );
 						}
 					}
 				}
