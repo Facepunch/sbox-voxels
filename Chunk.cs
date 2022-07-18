@@ -919,6 +919,7 @@ namespace Facepunch.Voxels
 			if ( collisionVertices.Length > 0 && collisionIndices.Length > 0 )
 			{
 				Shape = Body.AddMeshShape( collisionVertices, collisionIndices );
+				Shape.AddTag( "solid" );
 			}
 
 			if ( oldShape.IsValid() )
