@@ -990,8 +990,6 @@ namespace Facepunch.Voxels
 
 			BlockAtlasType = BlockAtlas.GetType().Name;
 			BlockAtlas.Initialize( jsonString );
-
-			Log.Info( jsonString );
 		}
 
 		public void AddBlockType( BlockType type )
