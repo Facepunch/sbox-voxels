@@ -972,9 +972,9 @@ namespace Facepunch.Voxels
 			if ( BlockAtlas != null )
 				throw new Exception( "Unable to load a block atlas as one is already loaded for this world!" );
 
-			var type = TypeLibrary.GetTypeByName( provider );
+			var type = TypeLibrary.GetDescription( provider );
 
-			BlockAtlas = (IBlockAtlasProvider)JsonSerializer.Deserialize( json, type );
+			BlockAtlas = (IBlockAtlasProvider)JsonSerializer.Deserialize( json, type.TargetType );
 			BlockAtlas.Initialize( json );
 		}
 
@@ -1040,15 +1040,15 @@ namespace Facepunch.Voxels
 			if ( BlockAtlas == null )
 				throw new Exception( "Unable to add any block types with no loaded block atlas!" );
 
-			foreach ( var type in TypeLibrary.GetTypes<BlockType>() )
+			foreach ( var type in TypeLibrary.GetDescriptions<BlockType>() )
 			{
 				if ( type.IsAbstract || type.IsGenericType )
 					continue;
 
-				if ( type == typeof( AirBlock ) || type == typeof( AssetBlock ) )
+				if ( type.TargetType == typeof( AirBlock ) || type.TargetType == typeof( AssetBlock ) )
 					continue;
 
-				AddBlockType( TypeLibrary.Create<BlockType>( type ) );
+				AddBlockType( type.Create<BlockType>() );
 			}
 
 			foreach ( var resource in BlockResource.All )
