@@ -1,4 +1,3 @@
-﻿using Facepunch.CoreWars;
 using Sandbox;
 
 namespace Facepunch.Voxels
