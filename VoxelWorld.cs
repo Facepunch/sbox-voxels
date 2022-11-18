@@ -409,7 +409,7 @@ namespace Facepunch.Voxels
 				return viewer;
 			}
 
-			return null; ;
+			return null;
 		}
 
 		public ChunkViewer AddViewer( Client client )
