@@ -1619,7 +1619,7 @@ namespace Facepunch.Voxels
 			{
 				try
 				{
-					if ( !Game.Current.IsValid() ) break;
+					if ( !GameManager.Current.IsValid() ) break;
 
 					await GameTask.Delay( 1 );
 
@@ -1655,7 +1655,7 @@ namespace Facepunch.Voxels
 			{
 				try
 				{
-					if ( !Game.Current.IsValid() ) break;
+					if ( !GameManager.Current.IsValid() ) break;
 
 					while ( queue.Count > 0 )
 					{

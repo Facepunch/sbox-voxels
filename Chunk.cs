@@ -1018,7 +1018,7 @@ namespace Facepunch.Voxels
 						for ( var z = 0; z < SizeZ; z++ )
 						{
 							// We need to check if the game is still running.
-							if ( !Game.Current.IsValid() ) break;
+							if ( !GameManager.Current.IsValid() ) break;
 
 							var position = new IntVector3( x, y, z );
 							var index = x * SizeY * SizeZ + y * SizeZ + z;
