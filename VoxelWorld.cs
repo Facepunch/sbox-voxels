@@ -517,7 +517,7 @@ namespace Facepunch.Voxels
 
 					foreach ( var kv in BiomeLookup )
 					{
-						var description = TypeLibrary.GetDescription( kv.Value.GetType() );
+						var description = TypeLibrary.GetType( kv.Value.GetType() );
 						writer.Write( kv.Key );
 						writer.Write( description.Identity );
 					}
@@ -802,7 +802,7 @@ namespace Facepunch.Voxels
 							var entityData = BinaryHelper.Serialize( w =>
 							{
 								var entity = entities[i];
-								var className = TypeLibrary.GetDescription( entity.GetType() ).ClassName;
+								var className = TypeLibrary.GetType( entity.GetType() ).ClassName;
 
 								w.Write( className );
 								w.Write( entity.Position );
@@ -972,7 +972,7 @@ namespace Facepunch.Voxels
 			if ( BlockAtlas != null )
 				throw new Exception( "Unable to load a block atlas as one is already loaded for this world!" );
 
-			var type = TypeLibrary.GetDescription( provider );
+			var type = TypeLibrary.GetType( provider );
 
 			BlockAtlas = (IBlockAtlasProvider)JsonSerializer.Deserialize( json, type.TargetType );
 			BlockAtlas.Initialize( json );
@@ -1040,7 +1040,7 @@ namespace Facepunch.Voxels
 			if ( BlockAtlas == null )
 				throw new Exception( "Unable to add any block types with no loaded block atlas!" );
 
-			foreach ( var type in TypeLibrary.GetDescriptions<BlockType>() )
+			foreach ( var type in TypeLibrary.GetTypes<BlockType>() )
 			{
 				if ( type.IsAbstract || type.IsGenericType )
 					continue;

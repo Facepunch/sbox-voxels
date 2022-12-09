@@ -40,7 +40,7 @@ namespace Facepunch.Voxels
 
 		public virtual string[] GetUniqueAliases()
 		{
-			var description = TypeLibrary.GetDescription( GetType() );
+			var description = TypeLibrary.GetType( GetType() );
 			if ( description != null ) return description.Aliases;
 			return null;
 		}
