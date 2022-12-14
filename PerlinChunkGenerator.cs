@@ -61,7 +61,7 @@ namespace Facepunch.Voxels
 		{
 			var offset = Chunk.Offset;
 
-			Rand.SetSeed( offset.x + offset.y + offset.z * Chunk.SizeZ + VoxelWorld.Seed );
+			Game.SetRandomSeed( offset.x + offset.y + offset.z * Chunk.SizeZ + VoxelWorld.Seed );
 
 			for ( var x = 0; x < Chunk.SizeX; x++ )
 			{
@@ -97,11 +97,11 @@ namespace Facepunch.Voxels
 
 							if ( isGeneratingTopBlock && Chunk.Blocks[index] > 0 )
 							{
-								if ( Rand.Float() < 0.01f )
+								if ( Game.Random.Float() < 0.01f )
 								{
 									GenerateTree( biome, position.x, position.y, position.z );
 								}
-								else if ( VoxelWorld.Spawnpoints.Count == 0 || Rand.Float() <= 0.1f )
+								else if ( VoxelWorld.Spawnpoints.Count == 0 || Game.Random.Float() <= 0.1f )
 								{
 									var spawnPositionSource = VoxelWorld.ToSourcePositionCenter( offset + position + new IntVector3( 0, 0, 1 ) );
 									VoxelWorld.SpawnpointsQueue.Enqueue( spawnPositionSource );
@@ -144,9 +144,9 @@ namespace Facepunch.Voxels
 			var maxTrunkHeight = 6;
 			var minLeavesRadius = 1;
 			var maxLeavesRadius = 2;
-			int trunkHeight = Rand.Int( minTrunkHeight, maxTrunkHeight );
+			int trunkHeight = Game.Random.Int( minTrunkHeight, maxTrunkHeight );
 			int trunkTop = z + trunkHeight;
-			int leavesRadius = Rand.Int( minLeavesRadius, maxLeavesRadius );
+			int leavesRadius = Game.Random.Int( minLeavesRadius, maxLeavesRadius );
 
 			// Would we be trying to generate a tree in another chunk?
 			if ( z + trunkHeight + leavesRadius >= Chunk.SizeZ

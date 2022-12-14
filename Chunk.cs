@@ -31,7 +31,7 @@ namespace Facepunch.Voxels
 
 			var transform = new Transform( Chunk.Offset * (float)Chunk.VoxelSize );
 
-			SceneObject = new SceneObject( Map.Scene, Model, transform );
+			SceneObject = new SceneObject( Game.SceneWorld, Model, transform );
 			SceneObject.Attributes.Set( "VoxelSize", Chunk.VoxelSize );
 			SceneObject.Attributes.Set( "DataMap", Chunk.DataMap.Texture );
 		}
@@ -82,9 +82,6 @@ namespace Facepunch.Voxels
 		public bool IsDestroyed { get; private set; }
 		public Vector3 Bounds { get; private set; }
 		public Biome Biome { get; set; }
-
-		public bool IsServer => Host.IsServer;
-		public bool IsClient => Host.IsClient;
 
 		public byte[] Blocks;
 
@@ -138,7 +135,7 @@ namespace Facepunch.Voxels
 			Details = new();
 			DataMap = new ChunkDataMap( this, world );
 			Offset = new IntVector3( x, y, z );
-			Body = Map.Physics.Body;
+			Body = Game.PhysicsWorld.Body;
 			World = world;
 		}
 
@@ -175,7 +172,7 @@ namespace Facepunch.Voxels
 			IsInitializing = false;
 			TimeSinceInitialized = 0f;
 
-			if ( IsClient )
+			if ( Game.IsClient )
 			{
 				TranslucentLayer = CreateRenderLayer( World.TranslucentMaterial );
 				TranslucentLayer.Initialize();
@@ -229,7 +226,7 @@ namespace Facepunch.Voxels
 				}
 			}
 
-			var entityName = IsServer ? block.ServerEntity : block.ClientEntity;
+			var entityName = Game.IsServer ? block.ServerEntity : block.ClientEntity;
 
 			if ( !string.IsNullOrEmpty( entityName ) )
 			{
@@ -295,7 +292,7 @@ namespace Facepunch.Voxels
 
 				BuildCollision();
 
-				if ( IsClient )
+				if ( Game.IsClient )
 				{
 					SetMeshVertices( UpdateVerticesResult.Vertices );
 				}
@@ -347,7 +344,7 @@ namespace Facepunch.Voxels
 
 				BuildCollision();
 
-				if ( IsClient )
+				if ( Game.IsClient )
 				{
 					SetMeshVertices( UpdateVerticesResult.Vertices );
 				}
@@ -590,7 +587,7 @@ namespace Facepunch.Voxels
 		{
 			if ( BlockStates.ContainsKey( position ) )
 			{
-				if ( IsServer )
+				if ( Game.IsServer )
 				{
 					DirtyBlockStates.Add( position );
 				}
@@ -686,7 +683,7 @@ namespace Facepunch.Voxels
 
 		public void InitializeBlocks()
 		{
-			var isServer = IsServer;
+			var isServer = Game.IsServer;
 
 			for ( var x = 0; x < SizeX; x++ )
 			{
@@ -761,9 +758,9 @@ namespace Facepunch.Voxels
 				throw new Exception( "Tried to destroy an already destroyed chunk!" );
 			}
 
-			if ( IsClient )
+			if ( Game.IsClient )
 			{
-				var viewer = Local.Client.GetChunkViewer();
+				var viewer = Game.LocalClient.GetChunkViewer();
 
 				if ( viewer.IsValid() )
 				{
@@ -930,7 +927,7 @@ namespace Facepunch.Voxels
 
 		public void SetMeshVertices( BlockVertex[][] data )
 		{
-			Host.AssertClient();
+			Game.AssertClient();
 
 			for ( int i = 0; i < RenderLayers.Count; i++ )
 			{
@@ -1043,7 +1040,7 @@ namespace Facepunch.Voxels
 								var uAxis = (axis + 1) % 3;
 								var vAxis = (axis + 2) % 3;
 
-								var shouldGenerateVertices = IsClient && !block.HideMesh && neighbourBlock.IsTranslucent && !block.ShouldCullFace( (BlockFace)faceSide, neighbourBlock );
+								var shouldGenerateVertices = Game.IsClient && !block.HideMesh && neighbourBlock.IsTranslucent && !block.ShouldCullFace( (BlockFace)faceSide, neighbourBlock );
 								var shouldGenerateCollision = !block.IsPassable && neighbourBlock.IsPassable;
 
 								if ( !shouldGenerateCollision && !shouldGenerateVertices )
@@ -1100,7 +1097,7 @@ namespace Facepunch.Voxels
 			}
 		}
 
-		private bool IsLoadedForClient( Client client )
+		private bool IsLoadedForClient( IClient client )
 		{
 			var viewer = client.GetChunkViewer();
 			return viewer.IsValid() && viewer.IsChunkLoaded( Offset );
@@ -1109,7 +1106,7 @@ namespace Facepunch.Voxels
 		[Event.Tick.Server]
 		private void ServerTick()
 		{
-			var clientsToSend = Client.All.Where( IsLoadedForClient );
+			var clientsToSend = Game.Clients.Where( IsLoadedForClient );
 
 			if ( OutgoingBlockUpdates.Count > 0 )
 			{
@@ -1234,7 +1231,7 @@ namespace Facepunch.Voxels
 				layer.SetOpacity( World.GlobalOpacity );
 			}
 
-			var viewer = Local.Client.GetChunkViewer();
+			var viewer = Game.LocalClient.GetChunkViewer();
 
 			if ( viewer.IsValid() )
 			{
@@ -1278,7 +1275,7 @@ namespace Facepunch.Voxels
 
 		private void StartThreadedInitializeTask()
 		{
-			if ( IsServer )
+			if ( Game.IsServer )
 			{
 				StartGeneratorTask();
 			}

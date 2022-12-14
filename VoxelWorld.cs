@@ -19,14 +19,14 @@ namespace Facepunch.Voxels
 
 		public static void RegisterVoxelModel( ModelEntity entity )
 		{
-			Host.AssertClient();
+			Game.AssertClient();
 			VoxelModelsEntities.Add( entity );
 			Current?.UpdateVoxelModel( entity );
 		}
 
 		public static void UnregisterVoxelModel( ModelEntity entity )
 		{
-			Host.AssertClient();
+			Game.AssertClient();
 			VoxelModelsEntities.Remove( entity );
 		}
 
@@ -38,7 +38,7 @@ namespace Facepunch.Voxels
 		[ClientRpc]
 		public static void DestroyWorldOnClient()
 		{
-			var viewer = Local.Client.GetChunkViewer();
+			var viewer = Game.LocalClient.GetChunkViewer();
 
 			if ( viewer.IsValid() )
 			{
@@ -246,9 +246,6 @@ namespace Facepunch.Voxels
 		public int SeaLevel { get; private set; }
 		public int Seed { get; private set; }
 
-		public bool IsServer => Host.IsServer;
-		public bool IsClient => Host.IsClient;
-
 		public int SizeX;
 		public int SizeY;
 		public int SizeZ;
@@ -378,7 +375,7 @@ namespace Facepunch.Voxels
 			chunk = new Chunk( this, offset.x, offset.y, offset.z );
 			chunk.OnFullUpdate += () => OnChunkUpdated( chunk );
 			
-			if ( IsServer && ChunkGeneratorType != null )
+			if ( Game.IsServer && ChunkGeneratorType != null )
 			{
 				var generator = TypeLibrary.Create<ChunkGenerator>( ChunkGeneratorType );
 				generator.Setup( this, chunk );
@@ -402,7 +399,7 @@ namespace Facepunch.Voxels
 			return position;
 		}
 
-		public ChunkViewer GetViewer( Client client )
+		public ChunkViewer GetViewer( IClient client )
 		{
 			if ( client.Components.TryGet<ChunkViewer>( out var viewer ) )
 			{
@@ -412,7 +409,7 @@ namespace Facepunch.Voxels
 			return null;
 		}
 
-		public ChunkViewer AddViewer( Client client )
+		public ChunkViewer AddViewer( IClient client )
 		{
 			return client.Components.GetOrCreate<ChunkViewer>();
 		}
@@ -463,7 +460,7 @@ namespace Facepunch.Voxels
 			}
 		}
 
-		public void Send( Client client )
+		public void Send( IClient client )
 		{
 			using ( var stream = new MemoryStream() )
 			{
@@ -565,7 +562,7 @@ namespace Facepunch.Voxels
 			{
 				IsLoadingFromFile = true;
 
-				foreach ( var client in Client.All )
+				foreach ( var client in Game.Clients )
 				{
 					var viewer = client.GetChunkViewer();
 
@@ -698,7 +695,7 @@ namespace Facepunch.Voxels
 
 				if ( Initialized )
 				{
-					foreach ( var client in Client.All )
+					foreach ( var client in Game.Clients )
 					{
 						Send( client );
 					}
@@ -940,7 +937,7 @@ namespace Facepunch.Voxels
 
 		public void SetBlockOnServer( IntVector3 position, byte blockId, int direction = 0, bool clearState = true )
 		{
-			Host.AssertServer();
+			Game.AssertServer();
 
 			if ( SetBlockAndUpdate( position, blockId, direction, false, clearState ) )
 			{
@@ -994,7 +991,7 @@ namespace Facepunch.Voxels
 
 		public void AddBlockType( BlockType type )
 		{
-			Host.AssertServer();
+			Game.AssertServer();
 
 			if ( BlockAtlas == null )
 				throw new Exception( "Unable to add any block types with no loaded block atlas!" );
@@ -1035,7 +1032,7 @@ namespace Facepunch.Voxels
 
 		public void AddAllBlockTypes()
 		{
-			Host.AssertServer();
+			Game.AssertServer();
 
 			if ( BlockAtlas == null )
 				throw new Exception( "Unable to add any block types with no loaded block atlas!" );
@@ -1061,7 +1058,7 @@ namespace Facepunch.Voxels
 
 		public void Reset()
 		{
-			if ( IsServer )
+			if ( Game.IsServer )
 			{
 				var entities = Entity.All.OfType<ISourceEntity>();
 
@@ -1241,7 +1238,7 @@ namespace Facepunch.Voxels
 
 			block.OnBlockAdded( chunk, position, direction );
 
-			var entityName = IsServer ? block.ServerEntity : block.ClientEntity;   
+			var entityName = Game.IsServer ? block.ServerEntity : block.ClientEntity;   
 
 			if ( !string.IsNullOrEmpty( entityName ) )
 			{
@@ -1594,7 +1591,7 @@ namespace Facepunch.Voxels
 		{
 			if ( IsLoadingFromFile ) return;
 
-			foreach ( var client in Client.All )
+			foreach ( var client in Game.Clients )
 			{
 				if ( client.Components.TryGet<ChunkViewer>( out var viewer ) )
 				{
@@ -1671,7 +1668,7 @@ namespace Facepunch.Voxels
 						continue;
 					}
 
-					if ( IsClient && !Local.Pawn.IsValid() )
+					if ( Game.IsClient && !Game.LocalPawn.IsValid() )
 					{
 						await GameTask.Delay( 1 );
 						continue;
@@ -1680,10 +1677,10 @@ namespace Facepunch.Voxels
 					var currentChunkIndex = chunksToUpdate.Count - 1;
 					var currentChunk = chunksToUpdate[currentChunkIndex];
 
-					if ( IsClient )
+					if ( Game.IsClient )
 					{
 						var currentDistance = float.PositiveInfinity;
-						var localPawnPosition = Local.Pawn.Position;
+						var localPawnPosition = Game.LocalPawn.Position;
 
 						for ( var i = 0; i < chunksToUpdate.Count; i++ )
 						{
@@ -1698,9 +1695,9 @@ namespace Facepunch.Voxels
 							}
 						}
 					}
-					else if ( IsServer )
+					else if ( Game.IsServer )
 					{
-						var clients = Client.All;
+						var clients = Game.Clients;
 
 						foreach ( var client in clients )
 						{

@@ -12,8 +12,6 @@ namespace Facepunch.Voxels
 		public Chunk Chunk { get; private set; }
 		public bool IsDirty { get; private set; }
 		public VoxelWorld VoxelWorld { get; private set; }
-		public bool IsClient => Host.IsClient;
-		public bool IsServer => Host.IsServer;
 		public int ChunkSizeX;
 		public int ChunkSizeY;
 		public int ChunkSizeZ;
@@ -31,7 +29,7 @@ namespace Facepunch.Voxels
 			PendingData = new byte[ChunkSizeX * ChunkSizeY * ChunkSizeZ * 4];
 			Data = new byte[ChunkSizeX * ChunkSizeY * ChunkSizeZ * 4];
 
-			if ( IsClient )
+			if ( Game.IsClient )
 			{
 				Texture = Texture.CreateVolume( ChunkSizeX, ChunkSizeY, ChunkSizeZ )
 					.WithMips( 0 )
@@ -43,7 +41,7 @@ namespace Facepunch.Voxels
 
 		public void Destroy()
 		{
-			if ( IsClient )
+			if ( Game.IsClient )
 			{
 				Texture.Dispose();
 				Texture = null;
@@ -93,7 +91,7 @@ namespace Facepunch.Voxels
 			Data[index] = PendingData[index];
 			Data[otherIndex] = PendingData[otherIndex];
 
-			if ( IsClient )
+			if ( Game.IsClient )
 			{
 				var baseIndex = ToIndex( position, 0 );
 				var data = new byte[4];
@@ -109,7 +107,7 @@ namespace Facepunch.Voxels
 
 		public bool UpdateTexture( bool forceUpdate = false )
 		{
-			if ( IsClient && (IsDirty || forceUpdate) )
+			if ( Game.IsClient && (IsDirty || forceUpdate) )
 			{
 				Array.Copy( PendingData, Data, Data.Length );
 				Texture.Update( Data );

@@ -9,9 +9,6 @@ namespace Facepunch.Voxels
 	{
 		[Net] public bool IsCurrentChunkReady { get; private set; }
 
-		public bool IsServer => Host.IsServer;
-		public bool IsClient => Host.IsClient;
-
 		[ClientRpc]
 		public static void UnloadChunkForClient( int x, int y, int z )
 		{
@@ -26,7 +23,7 @@ namespace Facepunch.Voxels
 		[ClientRpc]
 		public static void ResetViewerForClient()
 		{
-			var viewer = Local.Client.GetChunkViewer();
+			var viewer = Game.LocalClient.GetChunkViewer();
 
 			if ( viewer.IsValid() )
 			{
@@ -57,7 +54,7 @@ namespace Facepunch.Voxels
 
 		public bool IsBelowWorld()
 		{
-			if ( Entity is Client client && client.Pawn.IsValid() )
+			if ( Entity is IClient client && client.Pawn.IsValid() )
 			{
 				var voxelPosition = VoxelWorld.Current.ToVoxelPosition( client.Pawn.Position );
 				return VoxelWorld.Current.IsBelowBounds( voxelPosition );
@@ -68,7 +65,7 @@ namespace Facepunch.Voxels
 
 		public bool IsInWorld()
 		{
-			if ( Entity is Client client && client.Pawn.IsValid() )
+			if ( Entity is IClient client && client.Pawn.IsValid() )
 			{
 				var voxelPosition = VoxelWorld.Current.ToVoxelPosition( client.Pawn.Position );
 				return VoxelWorld.Current.IsInBounds( voxelPosition );
@@ -89,7 +86,7 @@ namespace Facepunch.Voxels
 
 		public void AddLoadedChunk( IntVector3 offset )
 		{
-			if ( IsServer )
+			if ( Game.IsServer )
 			{
 				ChunkSendQueue.Enqueue( offset );
 				ChunksToRemove.Remove( offset );
@@ -102,7 +99,7 @@ namespace Facepunch.Voxels
 
 		public void RemoveLoadedChunk( IntVector3 offset )
 		{
-			if ( IsServer )
+			if ( Game.IsServer )
 				ChunksToRemove.Add( offset );
 			else
 				LoadedChunks.Remove( offset );
@@ -112,7 +109,7 @@ namespace Facepunch.Voxels
 		{
 			var world = VoxelWorld.Current;
 
-			if ( IsServer && world.IsValid() )
+			if ( Game.IsServer && world.IsValid() )
 			{
 				foreach ( var offset in LoadedChunks )
 				{
@@ -130,7 +127,7 @@ namespace Facepunch.Voxels
 
 		public void Update()
 		{
-			if ( Entity is not Client client ) return;
+			if ( Entity is not IClient client ) return;
 			if ( !NextUpdateTime ) return;
 
 			var pawn = client.Pawn;

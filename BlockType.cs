@@ -33,8 +33,6 @@ namespace Facepunch.Voxels
 		public virtual string FootLandSound => "";
 		public virtual string ImpactSound => "";
 
-		public bool IsServer => Host.IsServer;
-		public bool IsClient => Host.IsClient;
 		public uint TintHex { get; private set; }
 		public bool IsValid => true;
 
@@ -65,7 +63,7 @@ namespace Facepunch.Voxels
 
 		public virtual void OnNeighbourUpdated( Chunk chunk, IntVector3 position, IntVector3 neighbourPosition )
 		{
-			if ( IsServer )
+			if ( Game.IsServer )
 			{
 				var blockAboveId = World.GetAdjacentBlock( position, (int)BlockFace.Top );
 
@@ -78,7 +76,7 @@ namespace Facepunch.Voxels
 
 		public virtual void OnBlockAdded( Chunk chunk, IntVector3 position, int direction )
 		{
-			if ( IsServer && DetailSpawnChance > 0f && Rand.Float() < DetailSpawnChance )
+			if ( Game.IsServer && DetailSpawnChance > 0f && Game.Random.Float() < DetailSpawnChance )
 			{
 				var blockAboveId = World.GetAdjacentBlock( position, (int)BlockFace.Top );
 				
@@ -88,7 +86,7 @@ namespace Facepunch.Voxels
 					sourcePosition.z += World.VoxelSize;
 
 					var detail = new ModelEntity();
-					detail.SetModel( Rand.FromArray( DetailModels ) );
+					detail.SetModel( Game.Random.FromArray( DetailModels ) );
 					detail.EnableAllCollisions = false;
 					detail.Position = sourcePosition;
 					detail.Scale = DetailScale;

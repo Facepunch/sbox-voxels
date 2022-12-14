@@ -32,9 +32,6 @@ namespace Facepunch.Voxels
 		public byte BlockId { get; set; }
 		public Chunk Chunk { get; set; }
 		public IntVector3 LocalPosition { get; set; }
-
-		public bool IsClient => Host.IsClient;
-		public bool IsServer => Host.IsServer;
 		
 		private bool InternalIsDirty;
 		public bool IsDirty

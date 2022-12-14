@@ -50,7 +50,7 @@ namespace Facepunch.Voxels
 
 		public override void OnNewModel( Model model )
 		{
-			if ( IsClient )
+			if ( Game.IsClient )
 			{
 				var block = BlockType as AssetBlock;
 
@@ -72,7 +72,7 @@ namespace Facepunch.Voxels
 
 		protected override void OnDestroy()
 		{
-			if ( IsClient && Chunk.IsValid() )
+			if ( Game.IsClient && Chunk.IsValid() )
 			{
 				Chunk.OnFullUpdate -= UpdateAttributes;
 			}

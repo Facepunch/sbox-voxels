@@ -27,7 +27,7 @@ namespace Facepunch.Voxels
 
 		public override void OnNeighbourUpdated( Chunk chunk, IntVector3 position, IntVector3 neighbourPosition )
 		{
-			if ( IsServer && ShouldSpread( position ) )
+			if ( Game.IsServer && ShouldSpread( position ) )
 			{
 				World.QueueBlockTick( position, this, 0.15f );
 			}
@@ -35,7 +35,7 @@ namespace Facepunch.Voxels
 
 		public override void OnBlockAdded( Chunk chunk, IntVector3 position, int direction )
 		{
-			if ( IsServer && ShouldSpread( position ) )
+			if ( Game.IsServer && ShouldSpread( position ) )
 			{
 				World.QueueBlockTick( position, this, 0.15f );
 			}
