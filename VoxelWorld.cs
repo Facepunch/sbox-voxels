@@ -1351,7 +1351,7 @@ namespace Facepunch.Voxels
 
 				for ( int i = 0; i < 3; ++i )
 				{
-					if ( MathF.Abs( distanceToNearestEdge[i] ) == 0.0f )
+					if ( MathF.Abs( distanceToNearestEdge[i] ) == 0f )
 					{
 						distanceToNearestEdge[i] = stepAmount[i];
 					}
@@ -1374,7 +1374,7 @@ namespace Facepunch.Voxels
 				position3f = position + direction * distance;
 				position3f[axis] = MathF.Floor( position3f[axis] + 0.5f * stepAmount[axis] );
 
-				if ( position3f.x < 0.0f || position3f.y < 0.0f || position3f.z < 0.0f ||
+				if ( position3f.x < 0f || position3f.y < 0f || position3f.z < 0f ||
 					 position3f.x >= SizeX || position3f.y >= SizeY || position3f.z >= SizeZ )
 				{
 					break;
@@ -1399,7 +1399,7 @@ namespace Facepunch.Voxels
 				}
 			}
 
-			Plane plane = new( new Vector3( 0.0f, 0.0f, 0.0f ), new Vector3( 0.0f, 0.0f, 1.0f ) );
+			Plane plane = new( new Vector3( 0f, 0f, 0f ), new Vector3( 0f, 0f, 1f ) );
 			float distanceHit = 0;
 			var traceHitPos = plane.Trace( ray, true );
 
@@ -1410,7 +1410,7 @@ namespace Facepunch.Voxels
 			{
 				Vector3 hitPosition3f = position + direction * distanceHit;
 
-				if ( hitPosition3f.x < 0.0f || hitPosition3f.y < 0.0f || hitPosition3f.z < 0.0f ||
+				if ( hitPosition3f.x < 0f || hitPosition3f.y < 0f || hitPosition3f.z < 0f ||
 					 hitPosition3f.x > SizeX || hitPosition3f.y > SizeY || hitPosition3f.z > SizeZ )
 				{
 					distance = length;
