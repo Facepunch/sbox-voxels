@@ -91,6 +91,7 @@ namespace Facepunch.Voxels
 			Data[index] = PendingData[index];
 			Data[otherIndex] = PendingData[otherIndex];
 
+			/*
 			if ( Game.IsClient )
 			{
 				var baseIndex = ToIndex( position, 0 );
@@ -100,6 +101,13 @@ namespace Facepunch.Voxels
 				data[2] = Data[baseIndex + 2];
 				data[3] = Data[baseIndex + 3];
 				Texture.Update3D( data, position.x, position.y, position.z, 1, 1, 1 );
+			}
+			*/
+
+			if ( Game.IsClient )
+			{
+				// TODO: Fix the above code instead, this sucks.
+				UpdateTexture( true );
 			}
 
 			return true;
