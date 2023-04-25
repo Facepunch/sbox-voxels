@@ -1,0 +1,59 @@
+// THIS FILE IS AUTO-GENERATED
+
+Layer0
+{
+	shader "shaders/voxels/voxel.shader_c"
+
+	//---- Translucent ----
+	F_ALPHA_TEST 1
+
+	g_flDiffuseBoost "0.050"
+	g_flDirectionalLightmapMinZ "0.050"
+	g_flDirectionalLightmapStrength "1.000"
+	g_flLightDirectionBias "1.000"
+	g_flSpecularBoost "0.100"
+	g_flTextureAtlasCellSize "64.000"
+	g_flVoxelOpacity "1.000"
+	g_flVoxelSize "48.000"
+
+	//---- Color ----
+	g_flModelTintAmount "1.000"
+	g_vColorTint "[1.000000 1.000000 1.000000 0.000000]"
+
+	//---- Fade ----
+	g_flFadeExponent "1.000"
+
+	//---- Fog ----
+	g_bFogEnabled "1"
+
+	//---- Material ----
+	TextureColor "materials/default/default_color.tga"
+	TextureTranslucency "materials/default/default_trans.tga"
+
+	//---- Texture Coordinates ----
+	g_nScaleTexCoordUByModelScaleAxis "0"
+	g_nScaleTexCoordVByModelScaleAxis "0"
+	g_vTexCoordOffset "[0.000 0.000]"
+	g_vTexCoordScale "[1.000 1.000]"
+	g_vTexCoordScrollSpeed "[0.000 0.000]"
+
+	//---- Translucent ----
+	g_flAlphaTestReference "0.500"
+	g_flAntiAliasedEdgeStrength "1.000"
+
+	//---- Voxel Atlas ----
+	TextureAtlasAmbientOcclusion "[1.000000 1.000000 1.000000 0.000000]"
+	TextureAtlasColor "materials/voxels/atlas.png"
+	TextureAtlasEmission "[0.000000 0.000000 0.000000 0.000000]"
+	TextureAtlasHue "[1.000000 1.000000 1.000000 1.000000]"
+	TextureAtlasMetalness "materials/default/default_metal.tga"
+	TextureAtlasNormal "[0.501961 0.501961 1.000000 0.000000]"
+	TextureAtlasRoughness "[0.500000 0.500000 0.500000 0.000000]"
+	TextureDataMap "materials/default/default.tga"
+
+	DynamicParams
+	{
+		g_flVoxelSize "VoxelSize"
+		TextureDataMap "DataMap"
+	}
+}

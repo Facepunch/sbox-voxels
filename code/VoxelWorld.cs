@@ -17,6 +17,8 @@ namespace Facepunch.Voxels
 		private static HashSet<ModelEntity> VoxelModelsEntities { get; set; } = new();
 		public static VoxelWorld Current { get; private set; }
 
+		public static BaseGameManager GetGameManager() => Entity.All.OfType<BaseGameManager>().FirstOrDefault();
+
 		public static void RegisterVoxelModel( ModelEntity entity )
 		{
 			Game.AssertClient();
@@ -212,24 +214,8 @@ namespace Facepunch.Voxels
 		public Dictionary<byte, Biome> BiomeLookup { get; private set; } = new();
 		public Dictionary<IntVector3, Chunk> Chunks { get; private set; } = new();
 		public List<Vector3> Spawnpoints { get; private set; } = new();
-		public bool HasNoDayCycleController { get; private set; } = false;
 		public float GlobalOpacity { get; set; } = 1f;
 		public List<Biome> Biomes { get; private set; } = new();
-
-		public DayCycleController DayCycle
-		{
-			get
-			{
-				if ( !HasNoDayCycleController && !CachedDayCycle.IsValid() )
-				{
-					var controller = Entity.All.OfType<DayCycleController>().FirstOrDefault();
-					HasNoDayCycleController = !controller.IsValid();
-					CachedDayCycle = controller;
-				}
-
-				return CachedDayCycle;
-			}
-		}
 
 		public IBlockAtlasProvider BlockAtlas { get; private set; }
 		public IntVector3 MaxSize { get; private set; } = new IntVector3( 0, 0, 128 );
@@ -278,7 +264,6 @@ namespace Facepunch.Voxels
 		private byte NextAvailableBiomeId { get; set; }
 		private Type ChunkGeneratorType { get; set; }
 
-		private DayCycleController CachedDayCycle;
 		private BiomeSampler BiomeSampler;
 
 		public bool IsDestroyed { get; private set; }
@@ -307,6 +292,14 @@ namespace Facepunch.Voxels
 			Seed = seed;
 
 			BiomeSampler = new BiomeSampler( this );
+
+			var game = GetGameManager();
+
+			if ( game.IsValid() )
+			{
+				var component = game.Components.GetOrCreate<VoxelWorldComponent>();
+				component.SkyBrightness = 1f;
+			}
 		}
 
 		public bool IsBelowBounds( IntVector3 position )
@@ -327,6 +320,19 @@ namespace Facepunch.Voxels
 			}
 
 			return false;
+		}
+
+		public void SetSkyBrightness( float brightness )
+		{
+			Game.AssertServer();
+
+			var game = GetGameManager();
+
+			if ( game.IsValid() )
+			{
+				var component = game.Components.GetOrCreate<VoxelWorldComponent>();
+				component.SkyBrightness = brightness;
+			}
 		}
 
 		public void SetMaxSize( int x, int y, int z )
@@ -1616,7 +1622,8 @@ namespace Facepunch.Voxels
 			{
 				try
 				{
-					if ( !GameManager.Current.IsValid() ) break;
+					var game = GetGameManager();
+					if ( !game.IsValid() ) break;
 
 					await GameTask.Delay( 1 );
 
@@ -1652,7 +1659,8 @@ namespace Facepunch.Voxels
 			{
 				try
 				{
-					if ( !GameManager.Current.IsValid() ) break;
+					var game = GetGameManager();
+					if ( !game.IsValid() ) break;
 
 					while ( queue.Count > 0 )
 					{

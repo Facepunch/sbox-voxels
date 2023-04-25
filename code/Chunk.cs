@@ -1007,6 +1007,7 @@ namespace Facepunch.Voxels
 
 				var chunkIndex = Offset.x * SizeY * SizeZ + Offset.y * SizeZ + Offset.z;
 				var random = new Random( chunkIndex );
+				var activeGame = Entity.All.OfType<BaseGameManager>().FirstOrDefault();
 
 				for ( var x = 0; x < SizeX; x++ )
 				{
@@ -1015,7 +1016,7 @@ namespace Facepunch.Voxels
 						for ( var z = 0; z < SizeZ; z++ )
 						{
 							// We need to check if the game is still running.
-							if ( !GameManager.Current.IsValid() ) break;
+							if ( !activeGame.IsValid() ) break;
 
 							var position = new IntVector3( x, y, z );
 							var index = x * SizeY * SizeZ + y * SizeZ + z;
@@ -1219,15 +1220,20 @@ namespace Facepunch.Voxels
 		[Event.Tick.Client]
 		private void ClientTick()
 		{
-			var isDayCycleValid = World.DayCycle.IsValid();
+			var brightness = 1f;
+			var game = VoxelWorld.GetGameManager();
+
+			if ( game.IsValid() )
+			{
+				var component = game.Components.GetOrCreate<VoxelWorldComponent>();
+				brightness = component.SkyBrightness;
+			}
 
 			for ( int i = 0; i < RenderLayers.Count; i++ )
 			{
 				var layer = RenderLayers[i];
 
-				if ( isDayCycleValid )
-					layer.SetBrightness( World.DayCycle.Brightness );
-
+				layer.SetBrightness( brightness );
 				layer.SetOpacity( World.GlobalOpacity );
 			}
 
